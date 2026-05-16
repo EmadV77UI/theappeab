@@ -12,8 +12,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: List files (debug)
+        run: ls -la
+
       - name: Build iOS app
         run: |
+          cd EABVFX_iOS
           xcodebuild -project EABVFX.xcodeproj \
             -scheme EABVFX \
             -sdk iphoneos \
@@ -26,6 +30,7 @@ jobs:
 
       - name: Create IPA
         run: |
+          cd EABVFX_iOS
           mkdir -p Payload
           cp -r build/Release-iphoneos/EABVFX.app Payload/
           zip -r EABVFX.ipa Payload/
@@ -34,4 +39,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: EABVFX.ipa
-          path: EABVFX.ipa
+          path: EABVFX_iOS/EABVFX.ipa
