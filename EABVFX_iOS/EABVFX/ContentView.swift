@@ -2,6 +2,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 import PhotosUI
 import AVFoundation
+import UIKit
 
 // MARK: - Video Bypass Engine
 class VideoBypass {
@@ -54,7 +55,7 @@ struct ContentView: View {
     @State private var showResult = false
     @State private var resultSuccess = false
     @State private var timer: Timer?
-    @State private var documentPickerDelegate: DocumentPickerDelegate?
+    @State private var showingPicker = false
     
     var body: some View {
         ZStack {
@@ -85,7 +86,7 @@ struct ContentView: View {
                     if isActivated {
                         VStack(alignment: .leading, spacing: 16) {
                             Text("VIDEO").font(.caption).font(.system(size: 12, weight: .bold)).foregroundColor(Color(red: 0, green: 1, blue: 1))
-                            Button(action: selectVideo) {
+                            Button(action: { showingPicker = true }) {
                                 HStack { Image(systemName: "video.badge.plus"); Text(selectedVideoURL?.lastPathComponent ?? "SELECT VIDEO") }
                                 .frame(maxWidth: .infinity).padding().background(Color(white: 0.2)).foregroundColor(.white).cornerRadius(12)
                             }
@@ -125,6 +126,11 @@ struct ContentView: View {
         .onAppear {
             checkActivation()
             startRemoteLogoutCheck()
+        }
+        .sheet(isPresented: $showingPicker) {
+            DocumentPickerView { url in
+                selectedVideoURL = url
+            }
         }
     }
     
@@ -193,17 +199,6 @@ struct ContentView: View {
         }
     }
     
-    private func selectVideo() {
-        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.mpeg4Movie, .quickTimeMovie])
-        let delegate = DocumentPickerDelegate { url in DispatchQueue.main.async { self.selectedVideoURL = url } }
-        picker.delegate = delegate
-        documentPickerDelegate = delegate
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let rootVC = windowScene.windows.first?.rootViewController {
-            rootVC.present(picker, animated: true)
-        }
-    }
-    
     private func processVideo() {
         guard let inputURL = selectedVideoURL else { return }
         isProcessing = true; showResult = false
@@ -235,12 +230,33 @@ struct ContentView: View {
     }
 }
 
-// MARK: - Document Picker Delegate
-class DocumentPickerDelegate: NSObject, UIDocumentPickerDelegate {
-    let onPick: (URL) -> Void
-    init(onPick: @escaping (URL) -> Void) { self.onPick = onPick }
-    func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
-        guard let url = urls.first else { return }
-        onPick(url)
+// MARK: - Document Picker as UIViewControllerRepresentable
+struct DocumentPickerView: UIViewControllerRepresentable {
+    var onPick: (URL) -> Void
+    
+    func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.mpeg4Movie, .quickTimeMovie])
+        picker.delegate = context.coordinator
+        picker.allowsMultipleSelection = false
+        return picker
+    }
+    
+    func updateUIViewController(_ uiViewController: UIDocumentPickerViewController, context: Context) {}
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onPick: onPick)
+    }
+    
+    class Coordinator: NSObject, UIDocumentPickerDelegate {
+        let onPick: (URL) -> Void
+        
+        init(onPick: @escaping (URL) -> Void) {
+            self.onPick = onPick
+        }
+        
+        func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+            guard let url = urls.first else { return }
+            onPick(url)
+        }
     }
 }
