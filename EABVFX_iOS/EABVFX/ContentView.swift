@@ -64,7 +64,7 @@ struct ShakeEffect: GeometryEffect {
     }
 }
 
-// MARK: - Floating Particles Background (iOS 14 compatible)
+// MARK: - Floating Particles Background
 struct ParticleBackground: View {
     @State private var particles: [(id: UUID, x: CGFloat, y: CGFloat, size: CGFloat, opacity: Double)] = []
     
@@ -123,6 +123,7 @@ struct ContentView: View {
     @State private var expiryText = ""
     @State private var statusColor = Color.gray
     @State private var selectedVideoURL: URL?
+    @State private var processedVideoURL: URL?
     @State private var isProcessing = false
     @State private var resultMessage = ""
     @State private var showResult = false
@@ -209,12 +210,39 @@ struct ContentView: View {
                             Text(resultMessage).font(.caption).foregroundColor(.gray)
                             
                             if resultSuccess {
-                                Button(action: { HapticManager.shared.impact(); UIApplication.shared.open(URL(string: "https://www.tiktok.com/upload")!) }) {
-                                    Text("🎬 OPEN TIKTOK STUDIO").frame(maxWidth: .infinity).padding()
+                                // Share Sheet Button (Works with TikTok app)
+                                Button(action: { 
+                                    HapticManager.shared.impact()
+                                    guard let videoURL = processedVideoURL else { return }
+                                    let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("share_\(Date().timeIntervalSince1970).mp4")
+                                    try? FileManager.default.copyItem(at: videoURL, to: tempURL)
+                                    let activityVC = UIActivityViewController(activityItems: [tempURL], applicationActivities: nil)
+                                    if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                                       let rootVC = windowScene.windows.first?.rootViewController {
+                                        rootVC.present(activityVC, animated: true)
+                                    }
+                                }) {
+                                    Text("📤 SHARE TO TIKTOK").frame(maxWidth: .infinity).padding()
                                         .background(Color(red: 0, green: 1, blue: 1)).foregroundColor(.black)
                                         .font(.system(size: 14, weight: .bold)).cornerRadius(12)
                                 }
                                 .padding(.top, 8)
+                                
+                                // Alternative: Open Safari Upload
+                                Button(action: { 
+                                    HapticManager.shared.impact()
+                                    UIApplication.shared.open(URL(string: "https://www.tiktok.com/upload")!)
+                                }) {
+                                    Text("🌐 OPEN TIKTOK IN SAFARI").frame(maxWidth: .infinity).padding()
+                                        .background(Color(white: 0.2)).foregroundColor(Color(red: 0, green: 1, blue: 1))
+                                        .font(.system(size: 12, weight: .medium)).cornerRadius(12)
+                                }
+                                
+                                Text("💡 Video saved to Photos. Tap SHARE → TikTok → Post for best quality")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal)
                             }
                         }
                         .padding().frame(maxWidth: .infinity).background(Color(white: 0.12)).cornerRadius(20)
@@ -314,7 +342,7 @@ struct ContentView: View {
         UserDefaults.standard.removeObject(forKey: "expiry")
         UserDefaults.standard.removeObject(forKey: "userId")
         isActivated = false; userId = nil; statusText = "Not activated"; statusColor = .gray; expiryText = ""; keyInput = ""
-        selectedVideoURL = nil; showResult = false
+        selectedVideoURL = nil; processedVideoURL = nil; showResult = false
         HapticManager.shared.impact()
     }
     
@@ -339,16 +367,25 @@ struct ContentView: View {
             do {
                 let tempOutput = FileManager.default.temporaryDirectory.appendingPathComponent("output_\(Date().timeIntervalSince1970).mp4")
                 let success = try await VideoBypass().bypassVideo(inputURL: inputURL, outputURL: tempOutput)
+                
                 if success {
+                    processedVideoURL = tempOutput
+                    
+                    // Save to Photos
                     PHPhotoLibrary.shared().performChanges({
                         PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: tempOutput)
                     }) { saved, error in
                         DispatchQueue.main.async {
-                            self.isProcessing = false; self.resultSuccess = saved
-                            self.resultMessage = saved ? "Video saved to Photos! You can now upload to TikTok." : (error?.localizedDescription ?? "Save failed")
+                            self.isProcessing = false
+                            self.resultSuccess = saved
+                            self.resultMessage = saved ? "Video processed! Ready to share." : (error?.localizedDescription ?? "Save failed")
                             self.showResult = true
-                            if saved { HapticManager.shared.notification(type: .success); SoundManager.shared.playSuccessSound() }
-                            else { HapticManager.shared.notification(type: .error) }
+                            if saved {
+                                HapticManager.shared.notification(type: .success)
+                                SoundManager.shared.playSuccessSound()
+                            } else {
+                                HapticManager.shared.notification(type: .error)
+                            }
                         }
                     }
                 } else {
@@ -356,8 +393,10 @@ struct ContentView: View {
                 }
             } catch {
                 DispatchQueue.main.async {
-                    self.isProcessing = false; self.resultSuccess = false
-                    self.resultMessage = error.localizedDescription; self.showResult = true
+                    self.isProcessing = false
+                    self.resultSuccess = false
+                    self.resultMessage = error.localizedDescription
+                    self.showResult = true
                     HapticManager.shared.notification(type: .error)
                 }
             }
