@@ -23,7 +23,6 @@ class VideoBypass {
         return true
     }
     
-    // FIXED: Properly convert NSRange to Range<Data.Index>
     private func findPattern(data: Data, pattern: [UInt8]) -> Range<Data.Index>? {
         let nsData = data as NSData
         let result = nsData.range(of: Data(pattern), in: NSRange(location: 0, length: nsData.length))
@@ -51,7 +50,7 @@ struct StatusResponse: Codable {
     let active: Bool
 }
 
-// MARK: - Main View (iOS 14 Compatible)
+// MARK: - Main View
 struct ContentView: View {
     @State private var keyInput = ""
     @State private var isActivated = false
@@ -67,6 +66,7 @@ struct ContentView: View {
     @State private var resultSuccess = false
     
     @State private var timer: Timer?
+    @State private var documentPickerDelegate: DocumentPickerDelegate?  // ✅ Strong reference
     
     var body: some View {
         ZStack {
@@ -316,14 +316,18 @@ struct ContentView: View {
         }
     }
     
+    // ✅ FIXED: selectVideo with strong delegate reference
     private func selectVideo() {
         let supportedTypes: [UTType] = [.mpeg4Movie, .quickTimeMovie]
         let picker = UIDocumentPickerViewController(forOpeningContentTypes: supportedTypes)
-        picker.delegate = DocumentPickerDelegate { url in
+        let delegate = DocumentPickerDelegate { url in
             DispatchQueue.main.async {
                 self.selectedVideoURL = url
             }
         }
+        picker.delegate = delegate
+        documentPickerDelegate = delegate  // ✅ Keep strong reference
+        
         if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
            let rootVC = windowScene.windows.first?.rootViewController {
             rootVC.present(picker, animated: true)
