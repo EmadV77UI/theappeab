@@ -36,64 +36,47 @@ class VideoBypass {
     }
 }
 
-// MARK: - Sound Manager
+// MARK: - Sound & Haptic Managers
 class SoundManager {
     static let shared = SoundManager()
-    private var player: AVAudioPlayer?
-    
-    func playErrorSound() {
-        // Create a simple beep sound programmatically
-        let systemSoundID: SystemSoundID = 1053 // iPhone default alert sound
-        AudioServicesPlaySystemSound(systemSoundID)
+    func playErrorSound() { AudioServicesPlaySystemSound(1053) }
+    func playSuccessSound() { AudioServicesPlaySystemSound(1025) }
+}
+
+class HapticManager {
+    static let shared = HapticManager()
+    func impact(style: UIImpactFeedbackGenerator.FeedbackStyle = .medium) {
+        UIImpactFeedbackGenerator(style: style).impactOccurred()
     }
-    
-    func playSuccessSound() {
-        let systemSoundID: SystemSoundID = 1025 // iPhone success sound
-        AudioServicesPlaySystemSound(systemSoundID)
+    func notification(type: UINotificationFeedbackGenerator.FeedbackType) {
+        UINotificationFeedbackGenerator().notificationOccurred(type)
     }
 }
 
-// MARK: - Haptic Manager
-class HapticManager {
-    static let shared = HapticManager()
+// MARK: - Shake Animation (iOS 14 compatible)
+struct ShakeEffect: GeometryEffect {
+    var amount: CGFloat = 10
+    var shakesPerUnit: CGFloat = 3
+    var animatableData: CGFloat
     
-    func impact(style: UIImpactFeedbackGenerator.FeedbackStyle = .medium) {
-        let generator = UIImpactFeedbackGenerator(style: style)
-        generator.impactOccurred()
-    }
-    
-    func notification(type: UINotificationFeedbackGenerator.FeedbackType) {
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(type)
+    func effectValue(size: CGSize) -> ProjectionTransform {
+        ProjectionTransform(CGAffineTransform(translationX: amount * sin(animatableData * .pi * shakesPerUnit), y: 0))
     }
 }
 
 // MARK: - Floating Particles Background (iOS 14 compatible)
 struct ParticleBackground: View {
-    @State private var particles: [Particle] = []
-    
-    struct Particle: Identifiable {
-        let id = UUID()
-        var x: CGFloat
-        var y: CGFloat
-        var size: CGFloat
-        var opacity: Double
-        var speed: Double
-    }
+    @State private var particles: [(id: UUID, x: CGFloat, y: CGFloat, size: CGFloat, opacity: Double)] = []
     
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                ForEach(particles) { particle in
+                ForEach(particles, id: \.id) { particle in
                     Circle()
                         .fill(Color(red: 0, green: 1, blue: 1))
                         .frame(width: particle.size, height: particle.size)
                         .position(x: particle.x, y: particle.y)
                         .opacity(particle.opacity)
-                        .animation(
-                            Animation.linear(duration: particle.speed).repeatForever(autoreverses: false),
-                            value: particle.y
-                        )
                 }
             }
             .onAppear {
@@ -107,19 +90,19 @@ struct ParticleBackground: View {
     
     private func generateParticles(in size: CGSize) {
         for _ in 0..<30 {
-            particles.append(Particle(
+            particles.append((
+                id: UUID(),
                 x: CGFloat.random(in: 0...size.width),
                 y: CGFloat.random(in: 0...size.height),
                 size: CGFloat.random(in: 2...6),
-                opacity: Double.random(in: 0.2...0.6),
-                speed: Double.random(in: 3...8)
+                opacity: Double.random(in: 0.2...0.6)
             ))
         }
     }
     
     private func animateParticles(in size: CGSize) {
         for index in particles.indices {
-            withAnimation(Animation.linear(duration: particles[index].speed).repeatForever(autoreverses: false)) {
+            withAnimation(Animation.linear(duration: Double.random(in: 3...8)).repeatForever(autoreverses: false)) {
                 particles[index].y = size.height + 50
             }
         }
@@ -130,28 +113,6 @@ struct ParticleBackground: View {
 struct VerifyRequest: Codable { let code: String }
 struct VerifyResponse: Codable { let success: Bool; let error: String?; let user_id: String? }
 struct StatusResponse: Codable { let active: Bool }
-
-// MARK: - Neon Button Style
-struct NeonButtonStyle: ButtonStyle {
-    var color: Color
-    var isWrong: Bool = false
-    
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(color.opacity(0.2))
-            .foregroundColor(color)
-            .cornerRadius(12)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(isWrong ? Color.red : color, lineWidth: 2)
-                    .shadow(color: isWrong ? Color.red : color, radius: isWrong ? 8 : 4)
-            )
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
-    }
-}
 
 // MARK: - Main View
 struct ContentView: View {
@@ -168,15 +129,12 @@ struct ContentView: View {
     @State private var resultSuccess = false
     @State private var timer: Timer?
     @State private var showingImagePicker = false
-    @State private var shakeTrigger = false
-    @State private var wrongKeyTrigger = false
+    @State private var shakeAmount: CGFloat = 0
+    @State private var wrongKeyGlow = false
     
     var body: some View {
         ZStack {
-            // Background
             Color(red: 0.07, green: 0.07, blue: 0.13).ignoresSafeArea()
-            
-            // Floating particles animation
             ParticleBackground()
             
             ScrollView {
@@ -186,10 +144,7 @@ struct ContentView: View {
                         Text("EABVFX").font(.system(size: 28, weight: .bold)).foregroundColor(Color(red: 0, green: 1, blue: 1))
                             .shadow(color: Color(red: 0, green: 1, blue: 1), radius: 5)
                         Spacer()
-                        Button(action: { 
-                            HapticManager.shared.impact()
-                            logout() 
-                        }) { 
+                        Button(action: { HapticManager.shared.impact(); logout() }) {
                             Image(systemName: "xmark.circle.fill").font(.title2).foregroundColor(Color(red: 1, green: 0.3, blue: 0))
                         }
                     }
@@ -203,21 +158,15 @@ struct ContentView: View {
                             .textFieldStyle(RoundedBorderTextFieldStyle())
                             .foregroundColor(.white)
                             .colorScheme(.dark)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .stroke(wrongKeyTrigger ? Color.red : Color.clear, lineWidth: 2)
-                            )
-                            .shake($shakeTrigger)
+                            .overlay(RoundedRectangle(cornerRadius: 6).stroke(wrongKeyGlow ? Color.red : Color.clear, lineWidth: 2))
+                            .modifier(ShakeEffect(animatableData: shakeAmount))
                         
                         Button(action: activate) {
                             Text("ACTIVATE")
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(wrongKeyTrigger ? Color.red.opacity(0.3) : Color(red: 0, green: 1, blue: 1))
-                                .foregroundColor(.black)
-                                .font(.system(size: 16, weight: .bold))
-                                .cornerRadius(12)
-                                .shadow(color: wrongKeyTrigger ? Color.red : Color(red: 0, green: 1, blue: 1), radius: wrongKeyTrigger ? 10 : 5)
+                                .frame(maxWidth: .infinity).padding()
+                                .background(wrongKeyGlow ? Color.red.opacity(0.3) : Color(red: 0, green: 1, blue: 1))
+                                .foregroundColor(.black).font(.system(size: 16, weight: .bold)).cornerRadius(12)
+                                .shadow(color: wrongKeyGlow ? Color.red : Color(red: 0, green: 1, blue: 1), radius: wrongKeyGlow ? 10 : 5)
                         }
                         
                         Text(statusText).font(.headline).foregroundColor(statusColor).frame(maxWidth: .infinity, alignment: .center)
@@ -231,18 +180,12 @@ struct ContentView: View {
                         VStack(alignment: .leading, spacing: 16) {
                             Text("VIDEO").font(.caption).font(.system(size: 12, weight: .bold)).foregroundColor(Color(red: 0, green: 1, blue: 1))
                             
-                            Button(action: { 
-                                HapticManager.shared.impact()
-                                showingImagePicker = true 
-                            }) {
+                            Button(action: { HapticManager.shared.impact(); showingImagePicker = true }) {
                                 HStack { Image(systemName: "video.badge.plus"); Text(selectedVideoURL?.lastPathComponent ?? "SELECT VIDEO FROM PHOTOS") }
                                 .frame(maxWidth: .infinity).padding().background(Color(white: 0.2)).foregroundColor(Color(red: 0, green: 1, blue: 1)).cornerRadius(12)
                             }
                             
-                            Button(action: { 
-                                HapticManager.shared.impact(style: .heavy)
-                                processVideo() 
-                            }) {
+                            Button(action: { HapticManager.shared.impact(style: .heavy); processVideo() }) {
                                 HStack { if isProcessing { ProgressView() }; Text(isProcessing ? "PROCESSING..." : "PROCESS VIDEO") }
                                 .frame(maxWidth: .infinity).padding()
                                 .background(isProcessing ? Color.gray : Color(red: 1, green: 0.3, blue: 0))
@@ -259,16 +202,17 @@ struct ContentView: View {
                     // Result Card
                     if showResult {
                         VStack(spacing: 12) {
-                            Image(systemName: resultSuccess ? "checkmark.circle.fill" : "xmark.circle.fill").font(.system(size: 50)).foregroundColor(resultSuccess ? .green : .red)
-                            Text(resultSuccess ? "SUCCESS" : "FAILED").font(.title2).font(.system(size: 18, weight: .bold)).foregroundColor(resultSuccess ? Color(red: 0, green: 1, blue: 1) : .red)
+                            Image(systemName: resultSuccess ? "checkmark.circle.fill" : "xmark.circle.fill").font(.system(size: 50))
+                                .foregroundColor(resultSuccess ? .green : .red)
+                            Text(resultSuccess ? "SUCCESS" : "FAILED").font(.title2).font(.system(size: 18, weight: .bold))
+                                .foregroundColor(resultSuccess ? Color(red: 0, green: 1, blue: 1) : .red)
                             Text(resultMessage).font(.caption).foregroundColor(.gray)
                             
                             if resultSuccess {
-                                Button(action: { 
-                                    HapticManager.shared.impact()
-                                    UIApplication.shared.open(URL(string: "https://www.tiktok.com/upload")!) 
-                                }) {
-                                    Text("🎬 OPEN TIKTOK STUDIO").frame(maxWidth: .infinity).padding().background(Color(red: 0, green: 1, blue: 1)).foregroundColor(.black).font(.system(size: 14, weight: .bold)).cornerRadius(12)
+                                Button(action: { HapticManager.shared.impact(); UIApplication.shared.open(URL(string: "https://www.tiktok.com/upload")!) }) {
+                                    Text("🎬 OPEN TIKTOK STUDIO").frame(maxWidth: .infinity).padding()
+                                        .background(Color(red: 0, green: 1, blue: 1)).foregroundColor(.black)
+                                        .font(.system(size: 14, weight: .bold)).cornerRadius(12)
                                 }
                                 .padding(.top, 8)
                             }
@@ -278,14 +222,17 @@ struct ContentView: View {
                     
                     // Social Buttons
                     HStack(spacing: 12) {
-                        Button(action: { HapticManager.shared.impact(); UIApplication.shared.open(URL(string: "https://www.tiktok.com/@eabvfx")!) }) { 
-                            Text("TikTok").frame(maxWidth: .infinity).padding(.vertical, 12).background(Color(red: 0, green: 1, blue: 1).opacity(0.2)).foregroundColor(Color(red: 0, green: 1, blue: 1)).cornerRadius(10) 
+                        Button(action: { HapticManager.shared.impact(); UIApplication.shared.open(URL(string: "https://www.tiktok.com/@eabvfx")!) }) {
+                            Text("TikTok").frame(maxWidth: .infinity).padding(.vertical, 12)
+                                .background(Color(red: 0, green: 1, blue: 1).opacity(0.2)).foregroundColor(Color(red: 0, green: 1, blue: 1)).cornerRadius(10)
                         }
-                        Button(action: { HapticManager.shared.impact(); UIApplication.shared.open(URL(string: "https://t.me/KurdishAE")!) }) { 
-                            Text("Telegram").frame(maxWidth: .infinity).padding(.vertical, 12).background(Color.blue.opacity(0.2)).foregroundColor(.blue).cornerRadius(10) 
+                        Button(action: { HapticManager.shared.impact(); UIApplication.shared.open(URL(string: "https://t.me/KurdishAE")!) }) {
+                            Text("Telegram").frame(maxWidth: .infinity).padding(.vertical, 12)
+                                .background(Color.blue.opacity(0.2)).foregroundColor(.blue).cornerRadius(10)
                         }
-                        Button(action: { HapticManager.shared.impact(); UIApplication.shared.open(URL(string: "https://t.me/EabIdbot")!) }) { 
-                            Text("GET KEY").frame(maxWidth: .infinity).padding(.vertical, 12).background(Color(red: 1, green: 0.3, blue: 0).opacity(0.2)).foregroundColor(Color(red: 1, green: 0.3, blue: 0)).cornerRadius(10) 
+                        Button(action: { HapticManager.shared.impact(); UIApplication.shared.open(URL(string: "https://t.me/EabIdbot")!) }) {
+                            Text("GET KEY").frame(maxWidth: .infinity).padding(.vertical, 12)
+                                .background(Color(red: 1, green: 0.3, blue: 0).opacity(0.2)).foregroundColor(Color(red: 1, green: 0.3, blue: 0)).cornerRadius(10)
                         }
                     }
                     .padding(.horizontal)
@@ -300,9 +247,7 @@ struct ContentView: View {
             startRemoteLogoutCheck()
         }
         .sheet(isPresented: $showingImagePicker) {
-            PHPickerView { url in
-                selectedVideoURL = url
-            }
+            PHPickerView { url in selectedVideoURL = url }
         }
     }
     
@@ -320,10 +265,7 @@ struct ContentView: View {
     }
     
     private func activate() {
-        guard !keyInput.isEmpty else { 
-            triggerWrongKey()
-            return 
-        }
+        guard !keyInput.isEmpty else { triggerWrongKey(); return }
         
         let url = URL(string: "https://white-brook-5e1f.emadbarzani0011.workers.dev/verify")!
         var request = URLRequest(url: url)
@@ -332,11 +274,7 @@ struct ContentView: View {
         
         URLSession.shared.dataTask(with: request) { data, _, _ in
             DispatchQueue.main.async {
-                guard let data = data else { 
-                    self.triggerWrongKey()
-                    statusText = "Network error"; statusColor = .red
-                    return 
-                }
+                guard let data = data else { triggerWrongKey(); statusText = "Network error"; statusColor = .red; return }
                 do {
                     let response = try JSONDecoder().decode(VerifyResponse.self, from: data)
                     if response.success {
@@ -352,11 +290,11 @@ struct ContentView: View {
                         HapticManager.shared.notification(type: .success)
                         SoundManager.shared.playSuccessSound()
                     } else {
-                        self.triggerWrongKey()
+                        triggerWrongKey()
                         statusText = response.error ?? "Invalid key"; statusColor = .red
                     }
                 } catch {
-                    self.triggerWrongKey()
+                    triggerWrongKey()
                     statusText = "Server error"; statusColor = .red
                 }
             }
@@ -366,13 +304,9 @@ struct ContentView: View {
     private func triggerWrongKey() {
         HapticManager.shared.notification(type: .error)
         SoundManager.shared.playErrorSound()
-        wrongKeyTrigger = true
-        shakeTrigger = true
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            wrongKeyTrigger = false
-            shakeTrigger = false
-        }
+        wrongKeyGlow = true
+        withAnimation(.easeInOut(duration: 0.3).repeatCount(3, autoreverses: true)) { shakeAmount = 10 }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { wrongKeyGlow = false; shakeAmount = 0 }
     }
     
     private func logout() {
@@ -380,8 +314,7 @@ struct ContentView: View {
         UserDefaults.standard.removeObject(forKey: "expiry")
         UserDefaults.standard.removeObject(forKey: "userId")
         isActivated = false; userId = nil; statusText = "Not activated"; statusColor = .gray; expiryText = ""; keyInput = ""
-        selectedVideoURL = nil
-        showResult = false
+        selectedVideoURL = nil; showResult = false
         HapticManager.shared.impact()
     }
     
@@ -414,12 +347,8 @@ struct ContentView: View {
                             self.isProcessing = false; self.resultSuccess = saved
                             self.resultMessage = saved ? "Video saved to Photos! You can now upload to TikTok." : (error?.localizedDescription ?? "Save failed")
                             self.showResult = true
-                            if saved {
-                                HapticManager.shared.notification(type: .success)
-                                SoundManager.shared.playSuccessSound()
-                            } else {
-                                HapticManager.shared.notification(type: .error)
-                            }
+                            if saved { HapticManager.shared.notification(type: .success); SoundManager.shared.playSuccessSound() }
+                            else { HapticManager.shared.notification(type: .error) }
                         }
                     }
                 } else {
@@ -436,7 +365,7 @@ struct ContentView: View {
     }
 }
 
-// MARK: - PHPickerView (iOS 14+ compatible)
+// MARK: - PHPickerView
 struct PHPickerView: UIViewControllerRepresentable {
     var onPick: (URL) -> Void
     
@@ -451,59 +380,21 @@ struct PHPickerView: UIViewControllerRepresentable {
     
     func updateUIViewController(_ uiViewController: PHPickerViewController, context: Context) {}
     
-    func makeCoordinator() -> Coordinator {
-        Coordinator(onPick: onPick)
-    }
+    func makeCoordinator() -> Coordinator { Coordinator(onPick: onPick) }
     
     class Coordinator: NSObject, PHPickerViewControllerDelegate {
         let onPick: (URL) -> Void
-        
-        init(onPick: @escaping (URL) -> Void) {
-            self.onPick = onPick
-        }
+        init(onPick: @escaping (URL) -> Void) { self.onPick = onPick }
         
         func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
             picker.dismiss(animated: true)
             guard let result = results.first else { return }
-            let itemProvider = result.itemProvider
-            if itemProvider.hasItemConformingToTypeIdentifier(UTType.movie.identifier) {
-                itemProvider.loadFileRepresentation(forTypeIdentifier: UTType.movie.identifier) { url, error in
-                    guard let url = url else { return }
-                    let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("video_\(Date().timeIntervalSince1970).mp4")
-                    try? FileManager.default.copyItem(at: url, to: tempURL)
-                    DispatchQueue.main.async {
-                        self.onPick(tempURL)
-                    }
-                }
+            result.itemProvider.loadFileRepresentation(forTypeIdentifier: UTType.movie.identifier) { url, error in
+                guard let url = url else { return }
+                let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("video_\(Date().timeIntervalSince1970).mp4")
+                try? FileManager.default.copyItem(at: url, to: tempURL)
+                DispatchQueue.main.async { self.onPick(tempURL) }
             }
         }
-    }
-}
-
-// MARK: - Shake Animation Modifier
-extension View {
-    func shake(_ trigger: Binding<Bool>) -> some View {
-        self.modifier(ShakeEffect(trigger: trigger))
-    }
-}
-
-struct ShakeEffect: ViewModifier {
-    @Binding var trigger: Bool
-    
-    func body(content: Content) -> some View {
-        content
-            .keyframeAnimator(initialValue: 0, trigger: trigger) { view, offset in
-                view.offset(x: offset)
-            } keyframes: { _ in
-                KeyframeTrack(\.self) {
-                    CubicKeyframe(-10, duration: 0.05)
-                    CubicKeyframe(10, duration: 0.05)
-                    CubicKeyframe(-8, duration: 0.05)
-                    CubicKeyframe(8, duration: 0.05)
-                    CubicKeyframe(-5, duration: 0.05)
-                    CubicKeyframe(5, duration: 0.05)
-                    CubicKeyframe(0, duration: 0.05)
-                }
-            }
     }
 }
