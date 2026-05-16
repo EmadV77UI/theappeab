@@ -46,7 +46,7 @@ struct StatusResponse: Codable {
     let active: Bool
 }
 
-// MARK: - Main View
+// MARK: - Main View (iOS 14 Compatible)
 struct ContentView: View {
     @State private var keyInput = ""
     @State private var isActivated = false
@@ -67,10 +67,8 @@ struct ContentView: View {
     
     var body: some View {
         ZStack {
-            // Dark background
             Color(red: 0.07, green: 0.07, blue: 0.13)
                 .ignoresSafeArea()
-                .overlay(ParticleView())
             
             ScrollView {
                 VStack(spacing: 20) {
@@ -78,14 +76,12 @@ struct ContentView: View {
                     HStack {
                         Text("EABVFX")
                             .font(.system(size: 28, weight: .bold, design: .rounded))
-                            .foregroundColor(.cyan)
-                            .shadow(color: .cyan, radius: 10)
+                            .foregroundColor(Color(red: 0, green: 1, blue: 1))
                         Spacer()
                         Button(action: logout) {
                             Image(systemName: "xmark.circle.fill")
                                 .font(.title2)
-                                .foregroundColor(.orange)
-                                .shadow(color: .orange, radius: 5)
+                                .foregroundColor(Color(red: 1, green: 0.3, blue: 0))
                         }
                     }
                     .padding(.horizontal)
@@ -96,7 +92,7 @@ struct ContentView: View {
                         Text("ACTIVATION")
                             .font(.caption)
                             .fontWeight(.bold)
-                            .foregroundColor(.orange)
+                            .foregroundColor(Color(red: 1, green: 0.3, blue: 0))
                             .kerning(1)
                         
                         TextField("Enter your activation key", text: $keyInput)
@@ -110,11 +106,10 @@ struct ContentView: View {
                             Text("ACTIVATE")
                                 .frame(maxWidth: .infinity)
                                 .padding()
-                                .background(Color.cyan)
+                                .background(Color(red: 0, green: 1, blue: 1))
                                 .foregroundColor(.black)
                                 .fontWeight(.bold)
                                 .cornerRadius(12)
-                                .shadow(color: .cyan, radius: 8)
                         }
                         
                         Text(statusText)
@@ -124,13 +119,13 @@ struct ContentView: View {
                         
                         Text(expiryText)
                             .font(.caption)
-                            .foregroundColor(.cyan)
+                            .foregroundColor(Color(red: 0, green: 1, blue: 1))
                             .frame(maxWidth: .infinity, alignment: .center)
                     }
                     .padding()
                     .background(Color(white: 0.12))
                     .cornerRadius(20)
-                    .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.cyan.opacity(0.3), lineWidth: 1))
+                    .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color(red: 0, green: 1, blue: 1).opacity(0.3), lineWidth: 1))
                     
                     // Video Card (only shown when activated)
                     if isActivated {
@@ -138,7 +133,7 @@ struct ContentView: View {
                             Text("VIDEO")
                                 .font(.caption)
                                 .fontWeight(.bold)
-                                .foregroundColor(.cyan)
+                                .foregroundColor(Color(red: 0, green: 1, blue: 1))
                             
                             Button(action: selectVideo) {
                                 HStack {
@@ -156,30 +151,29 @@ struct ContentView: View {
                                 HStack {
                                     if isProcessing {
                                         ProgressView()
-                                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
                                     }
                                     Text(isProcessing ? "PROCESSING..." : "PROCESS VIDEO")
                                 }
                                 .frame(maxWidth: .infinity)
                                 .padding()
-                                .background(Color.orange)
+                                .background(Color(red: 1, green: 0.3, blue: 0))
                                 .foregroundColor(.white)
                                 .fontWeight(.bold)
                                 .cornerRadius(12)
-                                .shadow(color: .orange, radius: 8)
                             }
                             .disabled(isProcessing || selectedVideoURL == nil)
                             
                             if isProcessing {
                                 ProgressView(value: processingProgress, total: 1.0)
-                                    .progressViewStyle(LinearProgressViewStyle(tint: .cyan))
+                                    .progressViewStyle(LinearProgressViewStyle())
+                                    .accentColor(Color(red: 0, green: 1, blue: 1))
                             }
                         }
                         .padding()
                         .background(Color(white: 0.12))
                         .cornerRadius(20)
-                        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.orange.opacity(0.3), lineWidth: 1))
-                        .transition(.opacity.combined(with: .scale))
+                        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color(red: 1, green: 0.3, blue: 0).opacity(0.3), lineWidth: 1))
+                        .transition(.opacity)
                     }
                     
                     // Result Card
@@ -191,7 +185,7 @@ struct ContentView: View {
                             Text(resultSuccess ? "SUCCESS" : "FAILED")
                                 .font(.title2)
                                 .fontWeight(.bold)
-                                .foregroundColor(resultSuccess ? .cyan : .red)
+                                .foregroundColor(resultSuccess ? Color(red: 0, green: 1, blue: 1) : .red)
                             Text(resultMessage)
                                 .font(.caption)
                                 .foregroundColor(.gray)
@@ -206,9 +200,9 @@ struct ContentView: View {
                     
                     // Social Links Row
                     HStack(spacing: 12) {
-                        SocialButton(title: "TikTok", icon: "play.rectangle", color: .cyan, url: "https://www.tiktok.com/@eabvfx")
+                        SocialButton(title: "TikTok", icon: "play.rectangle", color: Color(red: 0, green: 1, blue: 1), url: "https://www.tiktok.com/@eabvfx")
                         SocialButton(title: "Telegram", icon: "paperplane", color: .blue, url: "https://t.me/KurdishAE")
-                        SocialButton(title: "🔑 GET KEY", icon: "key", color: .orange, url: "https://t.me/EabIdbot")
+                        SocialButton(title: "🔑 GET KEY", icon: "key", color: Color(red: 1, green: 0.3, blue: 0), url: "https://t.me/EabIdbot")
                     }
                     .padding(.horizontal)
                     
@@ -269,14 +263,14 @@ struct ContentView: View {
                     let expiry = Calendar.current.date(byAdding: .day, value: 30, to: Date())!
                     UserDefaults.standard.set(true, forKey: "activated")
                     UserDefaults.standard.set(expiry, forKey: "expiry")
-                    UserDefaults.standard.set(response.user_id, forKey: "userId")
+                    UserDefaults.standard.set(response.user_id ?? "", forKey: "userId")
                     self.isActivated = true
                     self.userId = response.user_id
                     self.expiryText = "Expires: \(self.formattedDateTime(expiry))"
                     self.statusText = "ACTIVE"
                     self.statusColor = .green
                 } else {
-                    self.statusText = response?.error ?? "Invalid key"
+                    self.statusText = "Invalid key"
                     self.statusColor = .red
                 }
             }
@@ -312,8 +306,9 @@ struct ContentView: View {
     
     // MARK: - Video Processing
     private func selectVideo() {
-        let picker = DocumentPicker()
-        picker.didPickDocument = { url in
+        let supportedTypes: [UTType] = [.mpeg4Movie, .quickTimeMovie]
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: supportedTypes)
+        picker.delegate = DocumentPickerDelegate { url in
             self.selectedVideoURL = url
         }
         UIApplication.shared.windows.first?.rootViewController?.present(picker, animated: true)
@@ -380,66 +375,16 @@ struct SocialButton: View {
     }
 }
 
-// MARK: - Particle Animation Background
-struct ParticleView: View {
-    @State private var particles: [Particle] = []
+// MARK: - Document Picker Delegate
+class DocumentPickerDelegate: NSObject, UIDocumentPickerDelegate {
+    let onPick: (URL) -> Void
     
-    struct Particle: Identifiable {
-        let id = UUID()
-        var x: CGFloat
-        var y: CGFloat
-        var size: CGFloat
-        var speedX: Double
-        var speedY: Double
-        var color: Color
-    }
-    
-    var body: some View {
-        TimelineView(.animation) { timeline in
-            Canvas { context, size in
-                for particle in particles {
-                    var newX = particle.x + particle.speedX
-                    var newY = particle.y + particle.speedY
-                    if newX < 0 { newX = size.width }
-                    if newX > size.width { newX = 0 }
-                    if newY < 0 { newY = size.height }
-                    if newY > size.height { newY = 0 }
-                    
-                    let rect = CGRect(x: newX, y: newY, width: particle.size, height: particle.size)
-                    context.fill(Path(ellipseIn: rect), with: .color(particle.color))
-                }
-            }
-        }
-        .onAppear {
-            for _ in 0..<50 {
-                particles.append(Particle(
-                    x: CGFloat.random(in: 0...UIScreen.main.bounds.width),
-                    y: CGFloat.random(in: 0...UIScreen.main.bounds.height),
-                    size: CGFloat.random(in: 2...5),
-                    speedX: Double.random(in: -0.5...0.5),
-                    speedY: Double.random(in: -0.5...0.5),
-                    color: Bool.random() ? .cyan : .orange
-                ))
-            }
-        }
-    }
-}
-
-// MARK: - Document Picker Helper
-class DocumentPicker: NSObject, UIDocumentPickerDelegate {
-    var didPickDocument: ((URL) -> Void)?
-    private var picker: UIDocumentPickerViewController?
-    
-    func present() {
-        let supportedTypes: [UTType] = [.mpeg4Movie, .quickTimeMovie]
-        picker = UIDocumentPickerViewController(forOpeningContentTypes: supportedTypes)
-        picker?.delegate = self
-        picker?.allowsMultipleSelection = false
-        UIApplication.shared.windows.first?.rootViewController?.present(picker!, animated: true)
+    init(onPick: @escaping (URL) -> Void) {
+        self.onPick = onPick
     }
     
     func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
         guard let url = urls.first else { return }
-        didPickDocument?(url)
+        onPick(url)
     }
 }
