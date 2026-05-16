@@ -55,7 +55,8 @@ struct ContentView: View {
     @State private var showResult = false
     @State private var resultSuccess = false
     @State private var timer: Timer?
-    @State private var showingPicker = false
+    @State private var showTikTokStudioButton = false
+    @State private var showingImagePicker = false
     
     var body: some View {
         ZStack {
@@ -82,14 +83,16 @@ struct ContentView: View {
                     }
                     .padding().background(Color(white: 0.12)).cornerRadius(20)
                     
-                    // Video Card
+                    // Video Card (only when activated)
                     if isActivated {
                         VStack(alignment: .leading, spacing: 16) {
                             Text("VIDEO").font(.caption).font(.system(size: 12, weight: .bold)).foregroundColor(Color(red: 0, green: 1, blue: 1))
-                            Button(action: { showingPicker = true }) {
-                                HStack { Image(systemName: "video.badge.plus"); Text(selectedVideoURL?.lastPathComponent ?? "SELECT VIDEO") }
+                            
+                            Button(action: { showingImagePicker = true }) {
+                                HStack { Image(systemName: "video.badge.plus"); Text(selectedVideoURL?.lastPathComponent ?? "SELECT VIDEO FROM PHOTOS") }
                                 .frame(maxWidth: .infinity).padding().background(Color(white: 0.2)).foregroundColor(.white).cornerRadius(12)
                             }
+                            
                             Button(action: processVideo) {
                                 HStack { if isProcessing { ProgressView() }; Text(isProcessing ? "PROCESSING..." : "PROCESS VIDEO") }
                                 .frame(maxWidth: .infinity).padding().background(isProcessing ? Color.gray : Color(red: 1, green: 0.3, blue: 0))
@@ -106,6 +109,13 @@ struct ContentView: View {
                             Image(systemName: resultSuccess ? "checkmark.circle.fill" : "xmark.circle.fill").font(.system(size: 50)).foregroundColor(resultSuccess ? .green : .red)
                             Text(resultSuccess ? "SUCCESS" : "FAILED").font(.title2).font(.system(size: 18, weight: .bold)).foregroundColor(resultSuccess ? Color(red: 0, green: 1, blue: 1) : .red)
                             Text(resultMessage).font(.caption).foregroundColor(.gray)
+                            
+                            if resultSuccess {
+                                Button(action: { UIApplication.shared.open(URL(string: "https://www.tiktok.com/upload")!) }) {
+                                    Text("🎬 OPEN TIKTOK STUDIO").frame(maxWidth: .infinity).padding().background(Color(red: 0, green: 1, blue: 1)).foregroundColor(.black).font(.system(size: 14, weight: .bold)).cornerRadius(12)
+                                }
+                                .padding(.top, 8)
+                            }
                         }
                         .padding().frame(maxWidth: .infinity).background(Color(white: 0.12)).cornerRadius(20)
                     }
@@ -127,8 +137,8 @@ struct ContentView: View {
             checkActivation()
             startRemoteLogoutCheck()
         }
-        .sheet(isPresented: $showingPicker) {
-            DocumentPickerView { url in
+        .sheet(isPresented: $showingImagePicker) {
+            PHPickerView { url in
                 selectedVideoURL = url
             }
         }
@@ -184,6 +194,8 @@ struct ContentView: View {
         UserDefaults.standard.removeObject(forKey: "expiry")
         UserDefaults.standard.removeObject(forKey: "userId")
         isActivated = false; userId = nil; statusText = "Not activated"; statusColor = .gray; expiryText = ""; keyInput = ""
+        selectedVideoURL = nil
+        showResult = false
     }
     
     private func startRemoteLogoutCheck() {
@@ -213,7 +225,7 @@ struct ContentView: View {
                     }) { saved, error in
                         DispatchQueue.main.async {
                             self.isProcessing = false; self.resultSuccess = saved
-                            self.resultMessage = saved ? "Video saved to Photos" : (error?.localizedDescription ?? "Save failed")
+                            self.resultMessage = saved ? "Video saved to Photos! You can now upload to TikTok." : (error?.localizedDescription ?? "Save failed")
                             self.showResult = true
                         }
                     }
@@ -230,33 +242,46 @@ struct ContentView: View {
     }
 }
 
-// MARK: - Document Picker as UIViewControllerRepresentable
-struct DocumentPickerView: UIViewControllerRepresentable {
+// MARK: - PHPickerView (iOS 14+ compatible video picker from Photos)
+struct PHPickerView: UIViewControllerRepresentable {
     var onPick: (URL) -> Void
     
-    func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
-        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.mpeg4Movie, .quickTimeMovie])
+    func makeUIViewController(context: Context) -> PHPickerViewController {
+        var config = PHPickerConfiguration()
+        config.filter = .videos
+        config.selectionLimit = 1
+        let picker = PHPickerViewController(configuration: config)
         picker.delegate = context.coordinator
-        picker.allowsMultipleSelection = false
         return picker
     }
     
-    func updateUIViewController(_ uiViewController: UIDocumentPickerViewController, context: Context) {}
+    func updateUIViewController(_ uiViewController: PHPickerViewController, context: Context) {}
     
     func makeCoordinator() -> Coordinator {
         Coordinator(onPick: onPick)
     }
     
-    class Coordinator: NSObject, UIDocumentPickerDelegate {
+    class Coordinator: NSObject, PHPickerViewControllerDelegate {
         let onPick: (URL) -> Void
         
         init(onPick: @escaping (URL) -> Void) {
             self.onPick = onPick
         }
         
-        func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
-            guard let url = urls.first else { return }
-            onPick(url)
+        func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+            picker.dismiss(animated: true)
+            guard let result = results.first else { return }
+            let itemProvider = result.itemProvider
+            if itemProvider.hasItemConformingToTypeIdentifier(UTType.movie.identifier) {
+                itemProvider.loadFileRepresentation(forTypeIdentifier: UTType.movie.identifier) { url, error in
+                    guard let url = url else { return }
+                    let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("video_\(Date().timeIntervalSince1970).mp4")
+                    try? FileManager.default.copyItem(at: url, to: tempURL)
+                    DispatchQueue.main.async {
+                        self.onPick(tempURL)
+                    }
+                }
+            }
         }
     }
 }
