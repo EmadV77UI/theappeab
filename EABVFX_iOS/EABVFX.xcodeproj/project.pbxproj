@@ -1,0 +1,184 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+		/* Begin PBXFileReference section */
+		000000000000000000000001 /* EABVFX.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EABVFX.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		000000000000000000000002 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		000000000000000000000003 /* EABVFXApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EABVFXApp.swift; sourceTree = "<group>"; };
+		000000000000000000000004 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		000000000000000000000005 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		/* End PBXFileReference section */
+
+		/* Begin PBXGroup section */
+		000000000000000000000006 = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000007 /* EABVFX */,
+				000000000000000000000008 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		000000000000000000000007 /* EABVFX */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000002 /* Info.plist */,
+				000000000000000000000003 /* EABVFXApp.swift */,
+				000000000000000000000004 /* ContentView.swift */,
+				000000000000000000000005 /* Assets.xcassets */,
+			);
+			path = EABVFX;
+			sourceTree = "<group>";
+		};
+		000000000000000000000008 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000001 /* EABVFX.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		/* End PBXGroup section */
+
+		/* Begin PBXNativeTarget section */
+		000000000000000000000009 /* EABVFX */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 00000000000000000000000A /* Build configuration list for PBXNativeTarget "EABVFX" */;
+			buildPhases = (
+				00000000000000000000000B /* Sources */,
+				00000000000000000000000C /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = EABVFX;
+			productName = EABVFX;
+			productReference = 000000000000000000000001 /* EABVFX.app */;
+			productType = "com.apple.product-type.application";
+		};
+		/* End PBXNativeTarget section */
+
+		/* Begin PBXProject section */
+		00000000000000000000000D /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					000000000000000000000009 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = 00000000000000000000000E /* Build configuration list for PBXProject "EABVFX" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 000000000000000000000006;
+			productRefGroup = 000000000000000000000008 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				000000000000000000000009 /* EABVFX */,
+			);
+		};
+		/* End PBXProject section */
+
+		/* Begin PBXResourcesBuildPhase section */
+		00000000000000000000000C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		/* End PBXResourcesBuildPhase section */
+
+		/* Begin PBXSourcesBuildPhase section */
+		00000000000000000000000B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		/* End PBXSourcesBuildPhase section */
+
+		/* Begin XCBuildConfiguration section */
+		00000000000000000000000F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = EABVFX/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.eabvfx.ios;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		000000000000000000000010 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = EABVFX/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.eabvfx.ios;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		/* End XCBuildConfiguration section */
+
+		/* Begin XCConfigurationList section */
+		00000000000000000000000A /* Build configuration list for PBXNativeTarget "EABVFX" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				00000000000000000000000F /* Debug */,
+				000000000000000000000010 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		00000000000000000000000E /* Build configuration list for PBXProject "EABVFX" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				00000000000000000000000F /* Debug */,
+				000000000000000000000010 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		/* End XCConfigurationList section */
+	};
+	rootObject = 00000000000000000000000D /* Project object */;
+}
