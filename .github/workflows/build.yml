@@ -24,7 +24,8 @@ jobs:
           ls -la EABVFX_iOS/EABVFX.xcodeproj/xcshareddata/xcschemes/ || echo "No scheme folder found"
 
       - name: Build iOS app
-        continue-on-error: false
+        id: build
+        continue-on-error: true
         run: |
           cd EABVFX_iOS
           xcodebuild -project EABVFX.xcodeproj \
@@ -35,9 +36,17 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             ONLY_ACTIVE_ARCH=NO \
-            clean build 2>&1
+            clean build 2>&1 | tee xcodebuild.log
+
+      - name: Show Build Log on Failure
+        if: steps.build.outcome != 'success'
+        run: |
+          echo "=== Xcode Build Log ==="
+          cd EABVFX_iOS
+          cat xcodebuild.log
 
       - name: Check if build succeeded
+        if: steps.build.outcome == 'success'
         run: |
           cd EABVFX_iOS
           if [ -d "build/Release-iphoneos/EABVFX.app" ]; then
@@ -46,13 +55,14 @@ jobs:
             cp -r build/Release-iphoneos/EABVFX.app Payload/
             zip -r EABVFX.ipa Payload/
           else
-            echo "Build failed - no .app file found"
+            echo "Build claimed success but no .app file found"
             echo "Looking for any .app files..."
             find . -name "*.app" -type d
             exit 1
           fi
 
       - name: Upload IPA
+        if: steps.build.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: EABVFX.ipa
