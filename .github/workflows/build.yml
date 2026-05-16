@@ -12,8 +12,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: List files (debug)
-        run: ls -la
+      - name: List all files (debug)
+        run: |
+          ls -la
+          ls -la EABVFX_iOS/
 
       - name: Build iOS app
         run: |
@@ -26,9 +28,21 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             ONLY_ACTIVE_ARCH=NO \
-            build
+            build 2>&1 | tee build.log
+
+      - name: Show build log (if failed)
+        if: failure()
+        run: |
+          cd EABVFX_iOS
+          cat build.log
+
+      - name: Check if .app was created
+        run: |
+          cd EABVFX_iOS
+          find . -name "*.app" -type d
 
       - name: Create IPA
+        if: success()
         run: |
           cd EABVFX_iOS
           mkdir -p Payload
