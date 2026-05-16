@@ -14,10 +14,17 @@ jobs:
 
       - name: List all files (debug)
         run: |
+          echo "=== Root directory ==="
           ls -la
+          echo "=== EABVFX_iOS directory ==="
           ls -la EABVFX_iOS/
+          echo "=== EABVFX.xcodeproj contents ==="
+          ls -la EABVFX_iOS/EABVFX.xcodeproj/
+          echo "=== xcschemes folder ==="
+          ls -la EABVFX_iOS/EABVFX.xcodeproj/xcshareddata/xcschemes/ || echo "No scheme folder found"
 
       - name: Build iOS app
+        continue-on-error: false
         run: |
           cd EABVFX_iOS
           xcodebuild -project EABVFX.xcodeproj \
@@ -28,26 +35,22 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             ONLY_ACTIVE_ARCH=NO \
-            build 2>&1 | tee build.log
+            clean build 2>&1
 
-      - name: Show build log (if failed)
-        if: failure()
+      - name: Check if build succeeded
         run: |
           cd EABVFX_iOS
-          cat build.log
-
-      - name: Check if .app was created
-        run: |
-          cd EABVFX_iOS
-          find . -name "*.app" -type d
-
-      - name: Create IPA
-        if: success()
-        run: |
-          cd EABVFX_iOS
-          mkdir -p Payload
-          cp -r build/Release-iphoneos/EABVFX.app Payload/
-          zip -r EABVFX.ipa Payload/
+          if [ -d "build/Release-iphoneos/EABVFX.app" ]; then
+            echo "Build successful! App found."
+            mkdir -p Payload
+            cp -r build/Release-iphoneos/EABVFX.app Payload/
+            zip -r EABVFX.ipa Payload/
+          else
+            echo "Build failed - no .app file found"
+            echo "Looking for any .app files..."
+            find . -name "*.app" -type d
+            exit 1
+          fi
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
