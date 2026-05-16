@@ -23,9 +23,10 @@ class VideoBypass {
         return true
     }
     
+    // ✅ FIXED: Added missing 'in:' parameter
     private func findPattern(data: Data, pattern: [UInt8]) -> Range<Data.Index>? {
         let nsData = data as NSData
-        let result = nsData.range(of: Data(pattern))
+        let result = nsData.range(of: Data(pattern), in: NSRange(location: 0, length: nsData.length))
         return result.location != NSNotFound ? result.range : nil
     }
 }
@@ -87,7 +88,7 @@ struct ContentView: View {
                     VStack(alignment: .leading, spacing: 16) {
                         Text("ACTIVATION")
                             .font(.caption)
-                            .fontWeight(.bold)
+                            .font(.system(weight: .bold))
                             .foregroundColor(Color(red: 1, green: 0.3, blue: 0))
                         
                         TextField("Enter your activation key", text: $keyInput)
@@ -101,7 +102,7 @@ struct ContentView: View {
                                 .padding()
                                 .background(Color(red: 0, green: 1, blue: 1))
                                 .foregroundColor(.black)
-                                .fontWeight(.bold)
+                                .font(.system(size: 16, weight: .bold))
                                 .cornerRadius(12)
                         }
                         
@@ -124,7 +125,7 @@ struct ContentView: View {
                         VStack(alignment: .leading, spacing: 16) {
                             Text("VIDEO")
                                 .font(.caption)
-                                .fontWeight(.bold)
+                                .font(.system(weight: .bold))
                                 .foregroundColor(Color(red: 0, green: 1, blue: 1))
                             
                             Button(action: selectVideo) {
@@ -150,7 +151,7 @@ struct ContentView: View {
                                 .padding()
                                 .background(isProcessing ? Color.gray : Color(red: 1, green: 0.3, blue: 0))
                                 .foregroundColor(.white)
-                                .fontWeight(.bold)
+                                .font(.system(weight: .bold))
                                 .cornerRadius(12)
                             }
                             .disabled(isProcessing || selectedVideoURL == nil)
@@ -169,7 +170,7 @@ struct ContentView: View {
                                 .foregroundColor(resultSuccess ? .green : .red)
                             Text(resultSuccess ? "SUCCESS" : "FAILED")
                                 .font(.title2)
-                                .fontWeight(.bold)
+                                .font(.system(weight: .bold))
                                 .foregroundColor(resultSuccess ? Color(red: 0, green: 1, blue: 1) : .red)
                             Text(resultMessage)
                                 .font(.caption)
