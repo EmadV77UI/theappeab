@@ -5,15 +5,21 @@
 	};
 	objectVersion = 56;
 	objects = {
-		/* Begin PBXFileReference section */
+
+/* Begin PBXBuildFile section */
+		000000000000000000000011 /* EABVFXApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000003 /* EABVFXApp.swift */; };
+		000000000000000000000012 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000004 /* ContentView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
 		000000000000000000000001 /* EABVFX.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EABVFX.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		000000000000000000000002 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		000000000000000000000003 /* EABVFXApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EABVFXApp.swift; sourceTree = "<group>"; };
 		000000000000000000000004 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		000000000000000000000005 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		/* End PBXFileReference section */
+/* End PBXFileReference section */
 
-		/* Begin PBXGroup section */
+/* Begin PBXGroup section */
 		000000000000000000000006 = {
 			isa = PBXGroup;
 			children = (
@@ -41,9 +47,9 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		/* End PBXGroup section */
+/* End PBXGroup section */
 
-		/* Begin PBXNativeTarget section */
+/* Begin PBXNativeTarget section */
 		000000000000000000000009 /* EABVFX */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 00000000000000000000000A /* Build configuration list for PBXNativeTarget "EABVFX" */;
@@ -60,9 +66,9 @@
 			productReference = 000000000000000000000001 /* EABVFX.app */;
 			productType = "com.apple.product-type.application";
 		};
-		/* End PBXNativeTarget section */
+/* End PBXNativeTarget section */
 
-		/* Begin PBXProject section */
+/* Begin PBXProject section */
 		00000000000000000000000D /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
@@ -90,9 +96,9 @@
 				000000000000000000000009 /* EABVFX */,
 			);
 		};
-		/* End PBXProject section */
+/* End PBXProject section */
 
-		/* Begin PBXResourcesBuildPhase section */
+/* Begin PBXResourcesBuildPhase section */
 		00000000000000000000000C /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -100,19 +106,21 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		/* End PBXResourcesBuildPhase section */
+/* End PBXResourcesBuildPhase section */
 
-		/* Begin PBXSourcesBuildPhase section */
+/* Begin PBXSourcesBuildPhase section */
 		00000000000000000000000B /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				000000000000000000000011 /* EABVFXApp.swift in Sources */,
+				000000000000000000000012 /* ContentView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		/* End PBXSourcesBuildPhase section */
+/* End PBXSourcesBuildPhase section */
 
-		/* Begin XCBuildConfiguration section */
+/* Begin XCBuildConfiguration section */
 		00000000000000000000000F /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -157,9 +165,9 @@
 			};
 			name = Release;
 		};
-		/* End XCBuildConfiguration section */
+/* End XCBuildConfiguration section */
 
-		/* Begin XCConfigurationList section */
+/* Begin XCConfigurationList section */
 		00000000000000000000000A /* Build configuration list for PBXNativeTarget "EABVFX" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -178,7 +186,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		/* End XCConfigurationList section */
+/* End XCConfigurationList section */
 	};
 	rootObject = 00000000000000000000000D /* Project object */;
 }
