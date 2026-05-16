@@ -35,11 +35,13 @@ class VideoBypass {
 struct VerifyRequest: Codable {
     let code: String
 }
+
 struct VerifyResponse: Codable {
     let success: Bool
     let error: String?
     let user_id: String?
 }
+
 struct StatusResponse: Codable {
     let active: Bool
 }
@@ -65,12 +67,14 @@ struct ContentView: View {
     
     var body: some View {
         ZStack {
+            // Dark background
             Color(red: 0.07, green: 0.07, blue: 0.13)
                 .ignoresSafeArea()
                 .overlay(ParticleView())
             
             ScrollView {
                 VStack(spacing: 20) {
+                    // Header with Logout
                     HStack {
                         Text("EABVFX")
                             .font(.system(size: 28, weight: .bold, design: .rounded))
@@ -87,6 +91,7 @@ struct ContentView: View {
                     .padding(.horizontal)
                     .padding(.top, 20)
                     
+                    // Activation Card
                     VStack(alignment: .leading, spacing: 16) {
                         Text("ACTIVATION")
                             .font(.caption)
@@ -127,6 +132,7 @@ struct ContentView: View {
                     .cornerRadius(20)
                     .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.cyan.opacity(0.3), lineWidth: 1))
                     
+                    // Video Card (only shown when activated)
                     if isActivated {
                         VStack(alignment: .leading, spacing: 16) {
                             Text("VIDEO")
@@ -144,12 +150,6 @@ struct ContentView: View {
                                 .background(Color(white: 0.2))
                                 .foregroundColor(.white)
                                 .cornerRadius(12)
-                            }
-                            
-                            if let url = selectedVideoURL {
-                                Text(url.lastPathComponent)
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
                             }
                             
                             Button(action: processVideo) {
@@ -182,6 +182,7 @@ struct ContentView: View {
                         .transition(.opacity.combined(with: .scale))
                     }
                     
+                    // Result Card
                     if showResult {
                         VStack(spacing: 12) {
                             Image(systemName: resultSuccess ? "checkmark.circle.fill" : "xmark.circle.fill")
@@ -203,6 +204,7 @@ struct ContentView: View {
                         .transition(.opacity)
                     }
                     
+                    // Social Links Row
                     HStack(spacing: 12) {
                         SocialButton(title: "TikTok", icon: "play.rectangle", color: .cyan, url: "https://www.tiktok.com/@eabvfx")
                         SocialButton(title: "Telegram", icon: "paperplane", color: .blue, url: "https://t.me/KurdishAE")
@@ -224,6 +226,7 @@ struct ContentView: View {
         }
     }
     
+    // MARK: - Activation Functions
     private func checkActivation() {
         let defaults = UserDefaults.standard
         isActivated = defaults.bool(forKey: "activated")
@@ -307,6 +310,7 @@ struct ContentView: View {
         }
     }
     
+    // MARK: - Video Processing
     private func selectVideo() {
         let picker = DocumentPicker()
         picker.didPickDocument = { url in
@@ -354,6 +358,7 @@ struct ContentView: View {
     }
 }
 
+// MARK: - Social Button Component
 struct SocialButton: View {
     let title: String
     let icon: String
@@ -375,6 +380,7 @@ struct SocialButton: View {
     }
 }
 
+// MARK: - Particle Animation Background
 struct ParticleView: View {
     @State private var particles: [Particle] = []
     
@@ -419,6 +425,7 @@ struct ParticleView: View {
     }
 }
 
+// MARK: - Document Picker Helper
 class DocumentPicker: NSObject, UIDocumentPickerDelegate {
     var didPickDocument: ((URL) -> Void)?
     private var picker: UIDocumentPickerViewController?
