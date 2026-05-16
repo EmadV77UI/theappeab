@@ -46,7 +46,7 @@ struct StatusResponse: Codable {
     let active: Bool
 }
 
-// MARK: - Main View (iOS 14 Compatible)
+// MARK: - Main View
 struct ContentView: View {
     @State private var keyInput = ""
     @State private var isActivated = false
@@ -67,149 +67,16 @@ struct ContentView: View {
     
     var body: some View {
         ZStack {
-            Color(red: 0.07, green: 0.07, blue: 0.13)
-                .ignoresSafeArea()
+            Color(red: 0.07, green: 0.07, blue: 0.13).ignoresSafeArea()
             
             ScrollView {
                 VStack(spacing: 20) {
-                    // Header with Logout
-                    HStack {
-                        Text("EABVFX")
-                            .font(.system(size: 28, weight: .bold, design: .rounded))
-                            .foregroundColor(Color(red: 0, green: 1, blue: 1))
-                        Spacer()
-                        Button(action: logout) {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.title2)
-                                .foregroundColor(Color(red: 1, green: 0.3, blue: 0))
-                        }
-                    }
-                    .padding(.horizontal)
-                    .padding(.top, 20)
-                    
-                    // Activation Card
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text("ACTIVATION")
-                            .font(.caption)
-                            .fontWeight(.bold)
-                            .foregroundColor(Color(red: 1, green: 0.3, blue: 0))
-                            .kerning(1)
-                        
-                        TextField("Enter your activation key", text: $keyInput)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .foregroundColor(.white)
-                            .colorScheme(.dark)
-                            .background(Color(white: 0.15))
-                            .cornerRadius(8)
-                        
-                        Button(action: activate) {
-                            Text("ACTIVATE")
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(Color(red: 0, green: 1, blue: 1))
-                                .foregroundColor(.black)
-                                .fontWeight(.bold)
-                                .cornerRadius(12)
-                        }
-                        
-                        Text(statusText)
-                            .font(.headline)
-                            .foregroundColor(statusColor)
-                            .frame(maxWidth: .infinity, alignment: .center)
-                        
-                        Text(expiryText)
-                            .font(.caption)
-                            .foregroundColor(Color(red: 0, green: 1, blue: 1))
-                            .frame(maxWidth: .infinity, alignment: .center)
-                    }
-                    .padding()
-                    .background(Color(white: 0.12))
-                    .cornerRadius(20)
-                    .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color(red: 0, green: 1, blue: 1).opacity(0.3), lineWidth: 1))
-                    
-                    // Video Card (only shown when activated)
-                    if isActivated {
-                        VStack(alignment: .leading, spacing: 16) {
-                            Text("VIDEO")
-                                .font(.caption)
-                                .fontWeight(.bold)
-                                .foregroundColor(Color(red: 0, green: 1, blue: 1))
-                            
-                            Button(action: selectVideo) {
-                                HStack {
-                                    Image(systemName: "video.badge.plus")
-                                    Text(selectedVideoURL?.lastPathComponent ?? "SELECT VIDEO")
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(Color(white: 0.2))
-                                .foregroundColor(.white)
-                                .cornerRadius(12)
-                            }
-                            
-                            Button(action: processVideo) {
-                                HStack {
-                                    if isProcessing {
-                                        ProgressView()
-                                    }
-                                    Text(isProcessing ? "PROCESSING..." : "PROCESS VIDEO")
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(Color(red: 1, green: 0.3, blue: 0))
-                                .foregroundColor(.white)
-                                .fontWeight(.bold)
-                                .cornerRadius(12)
-                            }
-                            .disabled(isProcessing || selectedVideoURL == nil)
-                            
-                            if isProcessing {
-                                ProgressView(value: processingProgress, total: 1.0)
-                                    .progressViewStyle(LinearProgressViewStyle())
-                                    .accentColor(Color(red: 0, green: 1, blue: 1))
-                            }
-                        }
-                        .padding()
-                        .background(Color(white: 0.12))
-                        .cornerRadius(20)
-                        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color(red: 1, green: 0.3, blue: 0).opacity(0.3), lineWidth: 1))
-                        .transition(.opacity)
-                    }
-                    
-                    // Result Card
-                    if showResult {
-                        VStack(spacing: 12) {
-                            Image(systemName: resultSuccess ? "checkmark.circle.fill" : "xmark.circle.fill")
-                                .font(.system(size: 50))
-                                .foregroundColor(resultSuccess ? .green : .red)
-                            Text(resultSuccess ? "SUCCESS" : "FAILED")
-                                .font(.title2)
-                                .fontWeight(.bold)
-                                .foregroundColor(resultSuccess ? Color(red: 0, green: 1, blue: 1) : .red)
-                            Text(resultMessage)
-                                .font(.caption)
-                                .foregroundColor(.gray)
-                                .multilineTextAlignment(.center)
-                        }
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(Color(white: 0.12))
-                        .cornerRadius(20)
-                        .transition(.opacity)
-                    }
-                    
-                    // Social Links Row
-                    HStack(spacing: 12) {
-                        SocialButton(title: "TikTok", icon: "play.rectangle", color: Color(red: 0, green: 1, blue: 1), url: "https://www.tiktok.com/@eabvfx")
-                        SocialButton(title: "Telegram", icon: "paperplane", color: .blue, url: "https://t.me/KurdishAE")
-                        SocialButton(title: "🔑 GET KEY", icon: "key", color: Color(red: 1, green: 0.3, blue: 0), url: "https://t.me/EabIdbot")
-                    }
-                    .padding(.horizontal)
-                    
-                    Text("© 2026 EABVFX")
-                        .font(.caption2)
-                        .foregroundColor(.gray)
-                        .padding(.bottom, 20)
+                    headerView
+                    activationCardView
+                    if isActivated { videoCardView }
+                    if showResult { resultCardView }
+                    socialLinksView
+                    footerView
                 }
                 .padding(.horizontal)
             }
@@ -220,19 +87,179 @@ struct ContentView: View {
         }
     }
     
+    private var headerView: some View {
+        HStack {
+            Text("EABVFX")
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .foregroundColor(Color(red: 0, green: 1, blue: 1))
+            Spacer()
+            Button(action: logout) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.title2)
+                    .foregroundColor(Color(red: 1, green: 0.3, blue: 0))
+            }
+        }
+        .padding(.horizontal)
+        .padding(.top, 20)
+    }
+    
+    private var activationCardView: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("ACTIVATION")
+                .font(.caption)
+                .fontWeight(.bold)
+                .foregroundColor(Color(red: 1, green: 0.3, blue: 0))
+                .kerning(1)
+            
+            TextField("Enter your activation key", text: $keyInput)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .foregroundColor(.white)
+                .colorScheme(.dark)
+                .background(Color(white: 0.15))
+                .cornerRadius(8)
+            
+            Button(action: activate) {
+                Text("ACTIVATE")
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color(red: 0, green: 1, blue: 1))
+                    .foregroundColor(.black)
+                    .fontWeight(.bold)
+                    .cornerRadius(12)
+            }
+            
+            Text(statusText)
+                .font(.headline)
+                .foregroundColor(statusColor)
+                .frame(maxWidth: .infinity, alignment: .center)
+            
+            Text(expiryText)
+                .font(.caption)
+                .foregroundColor(Color(red: 0, green: 1, blue: 1))
+                .frame(maxWidth: .infinity, alignment: .center)
+        }
+        .padding()
+        .background(Color(white: 0.12))
+        .cornerRadius(20)
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color(red: 0, green: 1, blue: 1).opacity(0.3), lineWidth: 1))
+    }
+    
+    private var videoCardView: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("VIDEO")
+                .font(.caption)
+                .fontWeight(.bold)
+                .foregroundColor(Color(red: 0, green: 1, blue: 1))
+            
+            Button(action: selectVideo) {
+                HStack {
+                    Image(systemName: "video.badge.plus")
+                    Text(selectedVideoURL?.lastPathComponent ?? "SELECT VIDEO")
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color(white: 0.2))
+                .foregroundColor(.white)
+                .cornerRadius(12)
+            }
+            
+            Button(action: processVideo) {
+                HStack {
+                    if isProcessing {
+                        ProgressView()
+                    }
+                    Text(isProcessing ? "PROCESSING..." : "PROCESS VIDEO")
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(isProcessing ? Color.gray : Color(red: 1, green: 0.3, blue: 0))
+                .foregroundColor(.white)
+                .fontWeight(.bold)
+                .cornerRadius(12)
+            }
+            .disabled(isProcessing || selectedVideoURL == nil)
+            
+            if isProcessing {
+                ProgressView(value: processingProgress, total: 1.0)
+                    .progressViewStyle(LinearProgressViewStyle())
+            }
+        }
+        .padding()
+        .background(Color(white: 0.12))
+        .cornerRadius(20)
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color(red: 1, green: 0.3, blue: 0).opacity(0.3), lineWidth: 1))
+        .transition(.opacity)
+    }
+    
+    private var resultCardView: some View {
+        VStack(spacing: 12) {
+            Image(systemName: resultSuccess ? "checkmark.circle.fill" : "xmark.circle.fill")
+                .font(.system(size: 50))
+                .foregroundColor(resultSuccess ? .green : .red)
+            Text(resultSuccess ? "SUCCESS" : "FAILED")
+                .font(.title2)
+                .fontWeight(.bold)
+                .foregroundColor(resultSuccess ? Color(red: 0, green: 1, blue: 1) : .red)
+            Text(resultMessage)
+                .font(.caption)
+                .foregroundColor(.gray)
+                .multilineTextAlignment(.center)
+        }
+        .padding()
+        .frame(maxWidth: .infinity)
+        .background(Color(white: 0.12))
+        .cornerRadius(20)
+        .transition(.opacity)
+    }
+    
+    private var socialLinksView: some View {
+        HStack(spacing: 12) {
+            Link(destination: URL(string: "https://www.tiktok.com/@eabvfx")!) {
+                Label("TikTok", systemImage: "play.rectangle")
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color(red: 0, green: 1, blue: 1).opacity(0.2))
+                    .foregroundColor(Color(red: 0, green: 1, blue: 1))
+                    .cornerRadius(10)
+            }
+            
+            Link(destination: URL(string: "https://t.me/KurdishAE")!) {
+                Label("Telegram", systemImage: "paperplane")
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color.blue.opacity(0.2))
+                    .foregroundColor(.blue)
+                    .cornerRadius(10)
+            }
+            
+            Link(destination: URL(string: "https://t.me/EabIdbot")!) {
+                Label("GET KEY", systemImage: "key")
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color(red: 1, green: 0.3, blue: 0).opacity(0.2))
+                    .foregroundColor(Color(red: 1, green: 0.3, blue: 0))
+                    .cornerRadius(10)
+            }
+        }
+        .padding(.horizontal)
+    }
+    
+    private var footerView: some View {
+        Text("© 2026 EABVFX")
+            .font(.caption2)
+            .foregroundColor(.gray)
+            .padding(.bottom, 20)
+    }
+    
     // MARK: - Activation Functions
     private func checkActivation() {
         let defaults = UserDefaults.standard
         isActivated = defaults.bool(forKey: "activated")
-        if let expiry = defaults.object(forKey: "expiry") as? Date {
-            if expiry > Date() {
-                expiryText = "Expires: \(formattedDateTime(expiry))"
-                statusText = "ACTIVE"
-                statusColor = .green
-                userId = defaults.string(forKey: "userId")
-            } else {
-                logout()
-            }
+        if let expiry = defaults.object(forKey: "expiry") as? Date, expiry > Date() {
+            expiryText = "Expires: \(formattedDateTime(expiry))"
+            statusText = "ACTIVE"
+            statusColor = .green
+            userId = defaults.string(forKey: "userId")
         } else {
             isActivated = false
             statusText = "Not activated"
@@ -253,25 +280,34 @@ struct ContentView: View {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try? JSONEncoder().encode(VerifyRequest(code: keyInput))
+        request.httpBody = try? JSONEncoder().encode(["code": keyInput])
         
-        URLSession.shared.dataTask(with: request) { data, _, error in
+        URLSession.shared.dataTask(with: request) { data, _, _ in
             DispatchQueue.main.async {
-                if let data = data,
-                   let response = try? JSONDecoder().decode(VerifyResponse.self, from: data),
-                   response.success == true {
-                    let expiry = Calendar.current.date(byAdding: .day, value: 30, to: Date())!
-                    UserDefaults.standard.set(true, forKey: "activated")
-                    UserDefaults.standard.set(expiry, forKey: "expiry")
-                    UserDefaults.standard.set(response.user_id ?? "", forKey: "userId")
-                    self.isActivated = true
-                    self.userId = response.user_id
-                    self.expiryText = "Expires: \(self.formattedDateTime(expiry))"
-                    self.statusText = "ACTIVE"
-                    self.statusColor = .green
-                } else {
-                    self.statusText = "Invalid key"
-                    self.statusColor = .red
+                guard let data = data else {
+                    statusText = "Network error"
+                    statusColor = .red
+                    return
+                }
+                do {
+                    let response = try JSONDecoder().decode(VerifyResponse.self, from: data)
+                    if response.success {
+                        let expiry = Calendar.current.date(byAdding: .day, value: 30, to: Date())!
+                        UserDefaults.standard.set(true, forKey: "activated")
+                        UserDefaults.standard.set(expiry, forKey: "expiry")
+                        UserDefaults.standard.set(response.user_id ?? "", forKey: "userId")
+                        isActivated = true
+                        userId = response.user_id
+                        expiryText = "Expires: \(formattedDateTime(expiry))"
+                        statusText = "ACTIVE"
+                        statusColor = .green
+                    } else {
+                        statusText = response.error ?? "Invalid key"
+                        statusColor = .red
+                    }
+                } catch {
+                    statusText = "Server error"
+                    statusColor = .red
                 }
             }
         }.resume()
@@ -293,12 +329,9 @@ struct ContentView: View {
             guard let uid = userId, isActivated else { return }
             let url = URL(string: "https://white-brook-5e1f.emadbarzani0011.workers.dev/check-status?user_id=\(uid)")!
             URLSession.shared.dataTask(with: url) { data, _, _ in
-                if let data = data,
-                   let status = try? JSONDecoder().decode(StatusResponse.self, from: data),
-                   !status.active {
-                    DispatchQueue.main.async {
-                        self.logout()
-                    }
+                guard let data = data else { return }
+                if let status = try? JSONDecoder().decode(StatusResponse.self, from: data), !status.active {
+                    DispatchQueue.main.async { logout() }
                 }
             }.resume()
         }
@@ -309,9 +342,14 @@ struct ContentView: View {
         let supportedTypes: [UTType] = [.mpeg4Movie, .quickTimeMovie]
         let picker = UIDocumentPickerViewController(forOpeningContentTypes: supportedTypes)
         picker.delegate = DocumentPickerDelegate { url in
-            self.selectedVideoURL = url
+            DispatchQueue.main.async {
+                self.selectedVideoURL = url
+            }
         }
-        UIApplication.shared.windows.first?.rootViewController?.present(picker, animated: true)
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let rootVC = windowScene.windows.first?.rootViewController {
+            rootVC.present(picker, animated: true)
+        }
     }
     
     private func processVideo() {
@@ -328,13 +366,13 @@ struct ContentView: View {
                 processingProgress = 0.8
                 
                 if success {
-                    PHPhotoLibrary.shared().performChanges {
+                    PHPhotoLibrary.shared().performChanges({
                         PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: tempOutput)
-                    } completionHandler: { saved, error in
+                    }) { saved, error in
                         DispatchQueue.main.async {
                             self.isProcessing = false
                             self.resultSuccess = saved
-                            self.resultMessage = saved ? "Video saved to Photos" : "Failed to save: \(error?.localizedDescription ?? "")"
+                            self.resultMessage = saved ? "Video saved to Photos" : (error?.localizedDescription ?? "Save failed")
                             self.showResult = true
                         }
                     }
@@ -349,28 +387,6 @@ struct ContentView: View {
                     self.showResult = true
                 }
             }
-        }
-    }
-}
-
-// MARK: - Social Button Component
-struct SocialButton: View {
-    let title: String
-    let icon: String
-    let color: Color
-    let url: String
-    
-    var body: some View {
-        Button(action: {
-            UIApplication.shared.open(URL(string: url)!)
-        }) {
-            Label(title, systemImage: icon)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(color.opacity(0.2))
-                .foregroundColor(color)
-                .cornerRadius(10)
-                .overlay(RoundedRectangle(cornerRadius: 10).stroke(color, lineWidth: 1))
         }
     }
 }
