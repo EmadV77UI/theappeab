@@ -2,7 +2,6 @@ import SwiftUI
 import UniformTypeIdentifiers
 import PhotosUI
 import AVFoundation
-import Combine
 
 // MARK: - Video Bypass Engine
 class VideoBypass {
@@ -46,11 +45,10 @@ struct StatusResponse: Codable {
     let active: Bool
 }
 
-// MARK: - Main View
+// MARK: - Main View (iOS 14 Compatible)
 struct ContentView: View {
     @State private var keyInput = ""
     @State private var isActivated = false
-    @State private var expiryDate: Date?
     @State private var userId: String?
     @State private var statusText = "Not activated"
     @State private var expiryText = ""
@@ -58,7 +56,6 @@ struct ContentView: View {
     
     @State private var selectedVideoURL: URL?
     @State private var isProcessing = false
-    @State private var processingProgress = 0.0
     @State private var resultMessage = ""
     @State private var showResult = false
     @State private var resultSuccess = false
@@ -71,12 +68,154 @@ struct ContentView: View {
             
             ScrollView {
                 VStack(spacing: 20) {
-                    headerView
-                    activationCardView
-                    if isActivated { videoCardView }
-                    if showResult { resultCardView }
-                    socialLinksView
-                    footerView
+                    // Header
+                    HStack {
+                        Text("EABVFX")
+                            .font(.system(size: 28, weight: .bold))
+                            .foregroundColor(Color(red: 0, green: 1, blue: 1))
+                        Spacer()
+                        Button(action: logout) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.title2)
+                                .foregroundColor(Color(red: 1, green: 0.3, blue: 0))
+                        }
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 20)
+                    
+                    // Activation Card
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("ACTIVATION")
+                            .font(.caption)
+                            .fontWeight(.bold)
+                            .foregroundColor(Color(red: 1, green: 0.3, blue: 0))
+                        
+                        TextField("Enter your activation key", text: $keyInput)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .foregroundColor(.white)
+                            .colorScheme(.dark)
+                        
+                        Button(action: activate) {
+                            Text("ACTIVATE")
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color(red: 0, green: 1, blue: 1))
+                                .foregroundColor(.black)
+                                .fontWeight(.bold)
+                                .cornerRadius(12)
+                        }
+                        
+                        Text(statusText)
+                            .font(.headline)
+                            .foregroundColor(statusColor)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                        
+                        Text(expiryText)
+                            .font(.caption)
+                            .foregroundColor(Color(red: 0, green: 1, blue: 1))
+                            .frame(maxWidth: .infinity, alignment: .center)
+                    }
+                    .padding()
+                    .background(Color(white: 0.12))
+                    .cornerRadius(20)
+                    
+                    // Video Card
+                    if isActivated {
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("VIDEO")
+                                .font(.caption)
+                                .fontWeight(.bold)
+                                .foregroundColor(Color(red: 0, green: 1, blue: 1))
+                            
+                            Button(action: selectVideo) {
+                                HStack {
+                                    Image(systemName: "video.badge.plus")
+                                    Text(selectedVideoURL?.lastPathComponent ?? "SELECT VIDEO")
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color(white: 0.2))
+                                .foregroundColor(.white)
+                                .cornerRadius(12)
+                            }
+                            
+                            Button(action: processVideo) {
+                                HStack {
+                                    if isProcessing {
+                                        ProgressView()
+                                    }
+                                    Text(isProcessing ? "PROCESSING..." : "PROCESS VIDEO")
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(isProcessing ? Color.gray : Color(red: 1, green: 0.3, blue: 0))
+                                .foregroundColor(.white)
+                                .fontWeight(.bold)
+                                .cornerRadius(12)
+                            }
+                            .disabled(isProcessing || selectedVideoURL == nil)
+                        }
+                        .padding()
+                        .background(Color(white: 0.12))
+                        .cornerRadius(20)
+                        .transition(.opacity)
+                    }
+                    
+                    // Result Card
+                    if showResult {
+                        VStack(spacing: 12) {
+                            Image(systemName: resultSuccess ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                .font(.system(size: 50))
+                                .foregroundColor(resultSuccess ? .green : .red)
+                            Text(resultSuccess ? "SUCCESS" : "FAILED")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .foregroundColor(resultSuccess ? Color(red: 0, green: 1, blue: 1) : .red)
+                            Text(resultMessage)
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                        }
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(Color(white: 0.12))
+                        .cornerRadius(20)
+                    }
+                    
+                    // Social Buttons
+                    HStack(spacing: 12) {
+                        Button(action: { UIApplication.shared.open(URL(string: "https://www.tiktok.com/@eabvfx")!) }) {
+                            Text("TikTok")
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(Color(red: 0, green: 1, blue: 1).opacity(0.2))
+                                .foregroundColor(Color(red: 0, green: 1, blue: 1))
+                                .cornerRadius(10)
+                        }
+                        
+                        Button(action: { UIApplication.shared.open(URL(string: "https://t.me/KurdishAE")!) }) {
+                            Text("Telegram")
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(Color.blue.opacity(0.2))
+                                .foregroundColor(.blue)
+                                .cornerRadius(10)
+                        }
+                        
+                        Button(action: { UIApplication.shared.open(URL(string: "https://t.me/EabIdbot")!) }) {
+                            Text("GET KEY")
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(Color(red: 1, green: 0.3, blue: 0).opacity(0.2))
+                                .foregroundColor(Color(red: 1, green: 0.3, blue: 0))
+                                .cornerRadius(10)
+                        }
+                    }
+                    .padding(.horizontal)
+                    
+                    Text("© 2026 EABVFX")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                        .padding(.bottom, 20)
                 }
                 .padding(.horizontal)
             }
@@ -87,176 +226,13 @@ struct ContentView: View {
         }
     }
     
-    private var headerView: some View {
-        HStack {
-            Text("EABVFX")
-                .font(.system(size: 28, weight: .bold, design: .rounded))
-                .foregroundColor(Color(red: 0, green: 1, blue: 1))
-            Spacer()
-            Button(action: logout) {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.title2)
-                    .foregroundColor(Color(red: 1, green: 0.3, blue: 0))
-            }
-        }
-        .padding(.horizontal)
-        .padding(.top, 20)
-    }
-    
-    private var activationCardView: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("ACTIVATION")
-                .font(.caption)
-                .fontWeight(.bold)
-                .foregroundColor(Color(red: 1, green: 0.3, blue: 0))
-                .kerning(1)
-            
-            TextField("Enter your activation key", text: $keyInput)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-                .foregroundColor(.white)
-                .colorScheme(.dark)
-                .background(Color(white: 0.15))
-                .cornerRadius(8)
-            
-            Button(action: activate) {
-                Text("ACTIVATE")
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color(red: 0, green: 1, blue: 1))
-                    .foregroundColor(.black)
-                    .fontWeight(.bold)
-                    .cornerRadius(12)
-            }
-            
-            Text(statusText)
-                .font(.headline)
-                .foregroundColor(statusColor)
-                .frame(maxWidth: .infinity, alignment: .center)
-            
-            Text(expiryText)
-                .font(.caption)
-                .foregroundColor(Color(red: 0, green: 1, blue: 1))
-                .frame(maxWidth: .infinity, alignment: .center)
-        }
-        .padding()
-        .background(Color(white: 0.12))
-        .cornerRadius(20)
-        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color(red: 0, green: 1, blue: 1).opacity(0.3), lineWidth: 1))
-    }
-    
-    private var videoCardView: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("VIDEO")
-                .font(.caption)
-                .fontWeight(.bold)
-                .foregroundColor(Color(red: 0, green: 1, blue: 1))
-            
-            Button(action: selectVideo) {
-                HStack {
-                    Image(systemName: "video.badge.plus")
-                    Text(selectedVideoURL?.lastPathComponent ?? "SELECT VIDEO")
-                }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color(white: 0.2))
-                .foregroundColor(.white)
-                .cornerRadius(12)
-            }
-            
-            Button(action: processVideo) {
-                HStack {
-                    if isProcessing {
-                        ProgressView()
-                    }
-                    Text(isProcessing ? "PROCESSING..." : "PROCESS VIDEO")
-                }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(isProcessing ? Color.gray : Color(red: 1, green: 0.3, blue: 0))
-                .foregroundColor(.white)
-                .fontWeight(.bold)
-                .cornerRadius(12)
-            }
-            .disabled(isProcessing || selectedVideoURL == nil)
-            
-            if isProcessing {
-                ProgressView(value: processingProgress, total: 1.0)
-                    .progressViewStyle(LinearProgressViewStyle())
-            }
-        }
-        .padding()
-        .background(Color(white: 0.12))
-        .cornerRadius(20)
-        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color(red: 1, green: 0.3, blue: 0).opacity(0.3), lineWidth: 1))
-        .transition(.opacity)
-    }
-    
-    private var resultCardView: some View {
-        VStack(spacing: 12) {
-            Image(systemName: resultSuccess ? "checkmark.circle.fill" : "xmark.circle.fill")
-                .font(.system(size: 50))
-                .foregroundColor(resultSuccess ? .green : .red)
-            Text(resultSuccess ? "SUCCESS" : "FAILED")
-                .font(.title2)
-                .fontWeight(.bold)
-                .foregroundColor(resultSuccess ? Color(red: 0, green: 1, blue: 1) : .red)
-            Text(resultMessage)
-                .font(.caption)
-                .foregroundColor(.gray)
-                .multilineTextAlignment(.center)
-        }
-        .padding()
-        .frame(maxWidth: .infinity)
-        .background(Color(white: 0.12))
-        .cornerRadius(20)
-        .transition(.opacity)
-    }
-    
-    private var socialLinksView: some View {
-        HStack(spacing: 12) {
-            Link(destination: URL(string: "https://www.tiktok.com/@eabvfx")!) {
-                Label("TikTok", systemImage: "play.rectangle")
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(Color(red: 0, green: 1, blue: 1).opacity(0.2))
-                    .foregroundColor(Color(red: 0, green: 1, blue: 1))
-                    .cornerRadius(10)
-            }
-            
-            Link(destination: URL(string: "https://t.me/KurdishAE")!) {
-                Label("Telegram", systemImage: "paperplane")
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(Color.blue.opacity(0.2))
-                    .foregroundColor(.blue)
-                    .cornerRadius(10)
-            }
-            
-            Link(destination: URL(string: "https://t.me/EabIdbot")!) {
-                Label("GET KEY", systemImage: "key")
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(Color(red: 1, green: 0.3, blue: 0).opacity(0.2))
-                    .foregroundColor(Color(red: 1, green: 0.3, blue: 0))
-                    .cornerRadius(10)
-            }
-        }
-        .padding(.horizontal)
-    }
-    
-    private var footerView: some View {
-        Text("© 2026 EABVFX")
-            .font(.caption2)
-            .foregroundColor(.gray)
-            .padding(.bottom, 20)
-    }
-    
-    // MARK: - Activation Functions
     private func checkActivation() {
         let defaults = UserDefaults.standard
         isActivated = defaults.bool(forKey: "activated")
         if let expiry = defaults.object(forKey: "expiry") as? Date, expiry > Date() {
-            expiryText = "Expires: \(formattedDateTime(expiry))"
+            let formatter = DateFormatter()
+            formatter.dateFormat = "MMM dd, yyyy HH:mm:ss"
+            expiryText = "Expires: \(formatter.string(from: expiry))"
             statusText = "ACTIVE"
             statusColor = .green
             userId = defaults.string(forKey: "userId")
@@ -265,12 +241,6 @@ struct ContentView: View {
             statusText = "Not activated"
             statusColor = .gray
         }
-    }
-    
-    private func formattedDateTime(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM dd, yyyy HH:mm:ss"
-        return formatter.string(from: date)
     }
     
     private func activate() {
@@ -298,7 +268,9 @@ struct ContentView: View {
                         UserDefaults.standard.set(response.user_id ?? "", forKey: "userId")
                         isActivated = true
                         userId = response.user_id
-                        expiryText = "Expires: \(formattedDateTime(expiry))"
+                        let formatter = DateFormatter()
+                        formatter.dateFormat = "MMM dd, yyyy HH:mm:ss"
+                        expiryText = "Expires: \(formatter.string(from: expiry))"
                         statusText = "ACTIVE"
                         statusColor = .green
                     } else {
@@ -322,6 +294,7 @@ struct ContentView: View {
         statusText = "Not activated"
         statusColor = .gray
         expiryText = ""
+        keyInput = ""
     }
     
     private func startRemoteLogoutCheck() {
@@ -331,13 +304,12 @@ struct ContentView: View {
             URLSession.shared.dataTask(with: url) { data, _, _ in
                 guard let data = data else { return }
                 if let status = try? JSONDecoder().decode(StatusResponse.self, from: data), !status.active {
-                    DispatchQueue.main.async { logout() }
+                    DispatchQueue.main.async { self.logout() }
                 }
             }.resume()
         }
     }
     
-    // MARK: - Video Processing
     private func selectVideo() {
         let supportedTypes: [UTType] = [.mpeg4Movie, .quickTimeMovie]
         let picker = UIDocumentPickerViewController(forOpeningContentTypes: supportedTypes)
@@ -355,15 +327,12 @@ struct ContentView: View {
     private func processVideo() {
         guard let inputURL = selectedVideoURL else { return }
         isProcessing = true
-        processingProgress = 0.0
         showResult = false
         
         Task {
             do {
-                processingProgress = 0.3
                 let tempOutput = FileManager.default.temporaryDirectory.appendingPathComponent("output_\(Date().timeIntervalSince1970).mp4")
                 let success = try await VideoBypass().bypassVideo(inputURL: inputURL, outputURL: tempOutput)
-                processingProgress = 0.8
                 
                 if success {
                     PHPhotoLibrary.shared().performChanges({
