@@ -1,439 +1,798 @@
 import SwiftUI
-import UniformTypeIdentifiers
-import PhotosUI
-import AVFoundation
-import UIKit
+import WebKit
 
-// MARK: - Video Bypass Engine
-class VideoBypass {
-    private let elstSignature: [UInt8] = [0x65, 0x6C, 0x73, 0x74]
-    private let payload: UInt32 = 268435457
-    
-    func bypassVideo(inputURL: URL, outputURL: URL) async throws -> Bool {
-        try FileManager.default.copyItem(at: inputURL, to: outputURL)
-        let fileData = try Data(contentsOf: outputURL)
-        guard let range = findPattern(data: fileData, pattern: elstSignature) else {
-            return false
+@main
+struct EABVFXBoostApp: App {
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
         }
-        var patchedData = fileData
-        let patchOffset = range.lowerBound + 8
-        withUnsafeBytes(of: payload.bigEndian) { bytes in
-            patchedData.replaceSubrange(patchOffset..<patchOffset+4, with: bytes)
-        }
-        try patchedData.write(to: outputURL)
-        return true
+    }
+}
+
+struct WebView: UIViewRepresentable {
+    func makeUIView(context: Context) -> WKWebView {
+        let config = WKWebViewConfiguration()
+        config.preferences.javaScriptEnabled = true
+        config.websiteDataStore = WKWebsiteDataStore.default()
+        
+        let webView = WKWebView(frame: .zero, configuration: config)
+        webView.scrollView.bounces = false
+        webView.isOpaque = false
+        webView.backgroundColor = UIColor(red: 0.04, green: 0.04, blue: 0.04, alpha: 1.0)
+        
+        let htmlString = getHTMLString()
+        webView.loadHTMLString(htmlString, baseURL: nil)
+        
+        return webView
     }
     
-    private func findPattern(data: Data, pattern: [UInt8]) -> Range<Data.Index>? {
-        let nsData = data as NSData
-        let result = nsData.range(of: Data(pattern), in: NSRange(location: 0, length: nsData.length))
-        if result.location != NSNotFound {
-            let start = data.index(data.startIndex, offsetBy: result.location)
-            let end = data.index(start, offsetBy: result.length)
-            return start..<end
-        }
-        return nil
-    }
-}
-
-// MARK: - Sound & Haptic Managers
-class SoundManager {
-    static let shared = SoundManager()
-    func playErrorSound() { AudioServicesPlaySystemSound(1053) }
-    func playSuccessSound() { AudioServicesPlaySystemSound(1025) }
-}
-
-class HapticManager {
-    static let shared = HapticManager()
-    func impact(style: UIImpactFeedbackGenerator.FeedbackStyle = .medium) {
-        UIImpactFeedbackGenerator(style: style).impactOccurred()
-    }
-    func notification(type: UINotificationFeedbackGenerator.FeedbackType) {
-        UINotificationFeedbackGenerator().notificationOccurred(type)
-    }
-}
-
-// MARK: - Shake Animation (iOS 14 compatible)
-struct ShakeEffect: GeometryEffect {
-    var amount: CGFloat = 10
-    var shakesPerUnit: CGFloat = 3
-    var animatableData: CGFloat
+    func updateUIView(_ uiView: WKWebView, context: Context) {}
     
-    func effectValue(size: CGSize) -> ProjectionTransform {
-        ProjectionTransform(CGAffineTransform(translationX: amount * sin(animatableData * .pi * shakesPerUnit), y: 0))
-    }
-}
-
-// MARK: - Floating Particles Background
-struct ParticleBackground: View {
-    @State private var particles: [(id: UUID, x: CGFloat, y: CGFloat, size: CGFloat, opacity: Double)] = []
-    
-    var body: some View {
-        GeometryReader { geometry in
-            ZStack {
-                ForEach(particles, id: \.id) { particle in
-                    Circle()
-                        .fill(Color(red: 0, green: 1, blue: 1))
-                        .frame(width: particle.size, height: particle.size)
-                        .position(x: particle.x, y: particle.y)
-                        .opacity(particle.opacity)
+    private func getHTMLString() -> String {
+        return """
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+            <title>EABVFX • RED PHANTOM CORE</title>
+            <style>
+                * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                    -webkit-tap-highlight-color: transparent;
                 }
-            }
-            .onAppear {
-                generateParticles(in: geometry.size)
-                animateParticles(in: geometry.size)
-            }
-        }
-        .ignoresSafeArea()
-        .allowsHitTesting(false)
-    }
-    
-    private func generateParticles(in size: CGSize) {
-        for _ in 0..<30 {
-            particles.append((
-                id: UUID(),
-                x: CGFloat.random(in: 0...size.width),
-                y: CGFloat.random(in: 0...size.height),
-                size: CGFloat.random(in: 2...6),
-                opacity: Double.random(in: 0.2...0.6)
-            ))
-        }
-    }
-    
-    private func animateParticles(in size: CGSize) {
-        for index in particles.indices {
-            withAnimation(Animation.linear(duration: Double.random(in: 3...8)).repeatForever(autoreverses: false)) {
-                particles[index].y = size.height + 50
-            }
-        }
-    }
-}
-
-// MARK: - API Models
-struct VerifyRequest: Codable { let code: String }
-struct VerifyResponse: Codable { let success: Bool; let error: String?; let user_id: String? }
-struct StatusResponse: Codable { let active: Bool }
-
-// MARK: - Main View
-struct ContentView: View {
-    @State private var keyInput = ""
-    @State private var isActivated = false
-    @State private var userId: String?
-    @State private var statusText = "Not activated"
-    @State private var expiryText = ""
-    @State private var statusColor = Color.gray
-    @State private var selectedVideoURL: URL?
-    @State private var processedVideoURL: URL?
-    @State private var isProcessing = false
-    @State private var resultMessage = ""
-    @State private var showResult = false
-    @State private var resultSuccess = false
-    @State private var timer: Timer?
-    @State private var showingImagePicker = false
-    @State private var shakeAmount: CGFloat = 0
-    @State private var wrongKeyGlow = false
-    
-    var body: some View {
-        ZStack {
-            Color(red: 0.07, green: 0.07, blue: 0.13).ignoresSafeArea()
-            ParticleBackground()
-            
-            ScrollView {
-                VStack(spacing: 20) {
-                    // Header
-                    HStack {
-                        Text("EABVFX").font(.system(size: 28, weight: .bold)).foregroundColor(Color(red: 0, green: 1, blue: 1))
-                            .shadow(color: Color(red: 0, green: 1, blue: 1), radius: 5)
-                        Spacer()
-                        Button(action: { HapticManager.shared.impact(); logout() }) {
-                            Image(systemName: "xmark.circle.fill").font(.title2).foregroundColor(Color(red: 1, green: 0.3, blue: 0))
-                        }
+        
+                body {
+                    background: radial-gradient(circle at 30% 20%, #0a0000 0%, #010000 100%);
+                    font-family: 'Segoe UI', 'Inter', 'Poppins', monospace;
+                    min-height: 100vh;
+                    overflow-x: hidden;
+                    color: #e0e0e0;
+                    transition: background 0.8s ease;
+                    cursor: crosshair;
+                }
+        
+                body::before {
+                    content: "";
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background-image: 
+                        linear-gradient(rgba(255, 40, 20, 0.15) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(255, 40, 20, 0.15) 1px, transparent 1px);
+                    background-size: 45px 45px;
+                    pointer-events: none;
+                    animation: driftGrid 14s linear infinite;
+                    z-index: 0;
+                }
+        
+                @keyframes driftGrid {
+                    0% { transform: translateY(0px) translateX(0px); }
+                    100% { transform: translateY(45px) translateX(45px); }
+                }
+        
+                body::after {
+                    content: "";
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: repeating-linear-gradient(0deg, 
+                        rgba(255, 30, 0, 0.1) 0px,
+                        rgba(255, 30, 0, 0.1) 2px,
+                        transparent 2px,
+                        transparent 8px);
+                    pointer-events: none;
+                    z-index: 0;
+                }
+        
+                #particle-canvas {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    z-index: 1;
+                    pointer-events: none;
+                }
+        
+                .container {
+                    position: relative;
+                    z-index: 10;
+                    max-width: 550px;
+                    margin: 0 auto;
+                    padding: 20px;
+                    min-height: 100vh;
+                    padding-bottom: 80px;
+                }
+        
+                .timer-bar {
+                    background: rgba(8, 0, 0, 0.88);
+                    backdrop-filter: blur(12px);
+                    border-radius: 28px;
+                    padding: 12px 18px;
+                    margin-bottom: 20px;
+                    border: 1px solid #ff5555;
+                    box-shadow: 0 0 12px rgba(255, 0, 0, 0.3);
+                }
+        
+                .timer-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 8px;
+                }
+        
+                .timer-label {
+                    font-size: 11px;
+                    color: #ffaa88;
+                    letter-spacing: 1px;
+                }
+        
+                .timer-value {
+                    font-family: monospace;
+                    font-size: 18px;
+                    font-weight: bold;
+                    color: #ff6666;
+                    text-shadow: 0 0 5px #ff2200;
+                }
+        
+                .timer-progress {
+                    height: 4px;
+                    background: rgba(255, 255, 255, 0.1);
+                    border-radius: 4px;
+                    overflow: hidden;
+                }
+        
+                .timer-progress-bar {
+                    height: 100%;
+                    background: linear-gradient(90deg, #ff4444, #ffaa66);
+                    width: 100%;
+                    transition: width 1s linear;
+                }
+        
+                .card {
+                    background: rgba(8, 0, 0, 0.88);
+                    backdrop-filter: blur(20px);
+                    border-radius: 32px;
+                    border: 1px solid #ff5555;
+                    box-shadow: 0 20px 40px rgba(0,0,0,0.7), 0 0 30px rgba(255,0,0,0.5);
+                    padding: 24px;
+                    margin-bottom: 20px;
+                    text-align: center;
+                }
+        
+                .logo-ring svg {
+                    width: 48px;
+                    fill: #ff5555;
+                    margin-bottom: 10px;
+                }
+        
+                h1 {
+                    font-family: 'Segoe UI', 'Rajdhani', sans-serif;
+                    font-size: 26px;
+                    letter-spacing: 2px;
+                    background: linear-gradient(135deg, #ff5555, #ffaa77);
+                    -webkit-background-clip: text;
+                    background-clip: text;
+                    color: transparent;
+                }
+        
+                .highlight { color: #ff8866; }
+        
+                .subtitle {
+                    color: #ffaa88;
+                    font-size: 11px;
+                    margin-top: 5px;
+                    border-left: 2px solid #ff6666;
+                    padding-left: 10px;
+                    display: inline-block;
+                }
+        
+                .file-picker-area {
+                    background: rgba(30, 5, 5, 0.8);
+                    border: 2px dashed #ff6666;
+                    border-radius: 28px;
+                    padding: 32px 20px;
+                    text-align: center;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    margin-bottom: 20px;
+                }
+        
+                .file-picker-area:hover {
+                    background: #2a0808;
+                    border-color: #ffaa88;
+                    box-shadow: 0 0 16px #ff4444;
+                }
+        
+                .file-picker-area svg {
+                    width: 48px;
+                    fill: #ff6666;
+                    margin-bottom: 12px;
+                }
+        
+                .file-info {
+                    background: rgba(0,0,0,0.6);
+                    border-radius: 20px;
+                    padding: 14px;
+                    margin: 15px 0;
+                    font-size: 13px;
+                    border-left: 3px solid #ff4444;
+                }
+        
+                .file-info div {
+                    display: flex;
+                    justify-content: space-between;
+                    margin-bottom: 8px;
+                }
+        
+                .file-info span:first-child { color: #ffaa88; }
+                .file-info span:last-child { color: #ff7777; font-weight: bold; }
+        
+                .cyber-btn {
+                    width: 100%;
+                    padding: 14px;
+                    background: linear-gradient(95deg, #cc2200, #ff6644);
+                    border: none;
+                    border-radius: 60px;
+                    font-weight: 800;
+                    font-size: 16px;
+                    letter-spacing: 1px;
+                    color: white;
+                    text-shadow: 0 1px 2px black;
+                    cursor: pointer;
+                    transition: 0.05s linear;
+                    box-shadow: 0 5px 0 #661100;
+                    transform: translateY(-2px);
+                    margin-bottom: 12px;
+                }
+        
+                .cyber-btn:active {
+                    transform: translateY(3px);
+                    box-shadow: 0 1px 0 #661100;
+                }
+        
+                .cyber-btn:disabled {
+                    opacity: 0.6;
+                    transform: translateY(0);
+                    cursor: not-allowed;
+                }
+        
+                .social-actions {
+                    display: flex;
+                    gap: 12px;
+                    margin: 20px 0 10px;
+                }
+        
+                .social-btn {
+                    flex: 1;
+                    padding: 10px;
+                    border-radius: 40px;
+                    text-align: center;
+                    text-decoration: none;
+                    font-weight: 700;
+                    font-size: 13px;
+                    transition: 0.2s;
+                }
+        
+                .btn-tiktok, .btn-telegram {
+                    background: #1f0606;
+                    border: 1px solid #ff5555;
+                    color: #ffaa77;
+                }
+        
+                .social-btn:hover {
+                    background: #3a0a0a;
+                    color: #ffccaa;
+                    box-shadow: 0 0 10px red;
+                }
+        
+                .footer {
+                    text-align: center;
+                    margin-top: 20px;
+                    font-size: 10px;
+                    color: #aa6655;
+                }
+        
+                .login-screen {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: #0a0000e6;
+                    backdrop-filter: blur(12px);
+                    z-index: 1000;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+        
+                .login-card {
+                    background: #0f0202;
+                    border: 2px solid #ff4444;
+                    border-radius: 48px;
+                    padding: 2.5rem;
+                    width: 85%;
+                    max-width: 380px;
+                    text-align: center;
+                    box-shadow: 0 0 70px rgba(255, 0, 0, 0.5);
+                    animation: flickerRed 2s infinite;
+                }
+        
+                @keyframes flickerRed {
+                    0% { border-color: #ff4444; box-shadow: 0 0 20px red; }
+                    50% { border-color: #ff8888; box-shadow: 0 0 50px #ff5500; }
+                    100% { border-color: #ff4444; box-shadow: 0 0 20px red; }
+                }
+        
+                .login-card h2 {
+                    color: #ff6666;
+                    margin: 15px 0;
+                    font-size: 1.8rem;
+                    text-shadow: 0 0 8px red;
+                }
+        
+                .login-card input {
+                    width: 100%;
+                    padding: 14px;
+                    margin: 20px 0;
+                    background: #1a0303;
+                    border: 1px solid #ff4444;
+                    color: #ffaaaa;
+                    font-size: 1rem;
+                    text-align: center;
+                    letter-spacing: 1px;
+                    border-radius: 60px;
+                }
+        
+                .error-msg {
+                    color: #ff8888;
+                    font-size: 12px;
+                    margin-top: 10px;
+                    min-height: 30px;
+                }
+        
+                .success-animation {
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    background: #0a0000ee;
+                    backdrop-filter: blur(16px);
+                    border-radius: 32px;
+                    padding: 30px;
+                    text-align: center;
+                    z-index: 1100;
+                    animation: fadeInOut 2s ease;
+                    border: 1px solid #2ecc71;
+                }
+        
+                @keyframes fadeInOut {
+                    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+                    20% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+                    80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+                    100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+                }
+        
+                .spinner {
+                    display: inline-block;
+                    width: 18px;
+                    height: 18px;
+                    border: 2px solid rgba(255,255,255,0.3);
+                    border-radius: 50%;
+                    border-top-color: white;
+                    animation: spin 0.6s linear infinite;
+                    margin-right: 8px;
+                }
+        
+                @keyframes spin { to { transform: rotate(360deg); } }
+        
+                .hidden { display: none !important; }
+        
+                .light-mode { background: #f0e6e0; }
+                .light-mode .card, .light-mode .timer-bar, .light-mode .file-picker-area {
+                    background: rgba(255,245,240,0.95);
+                    color: #2a1a1a;
+                }
+                .light-mode .file-info { background: #f0e0d8; }
+                .light-mode .cyber-btn { background: linear-gradient(95deg, #aa3300, #cc5533); }
+            </style>
+        </head>
+        <body>
+            <canvas id="particle-canvas"></canvas>
+        
+            <div id="loginScreen" class="login-screen">
+                <div class="login-card">
+                    <div class="logo-ring"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zm0 9l2.5-1.25L12 8.5l-2.5 1.25L12 11zm0 2.5l-5-2.5-5 2.5L12 22l10-8.5-5-2.5-5 2.5z"/></svg></div>
+                    <h2>EABVFX <span style="color:#ff7777;">BOOSTER</span></h2>
+                    <input type="text" id="licenseKey" placeholder="License Key" autocomplete="off">
+                    <button id="verifyBtn" class="cyber-btn" style="background: #aa2222; box-shadow: 0 5px 0 #551100;">VERIFY</button>
+                    <div id="loginError" class="error-msg"></div>
+                    <div style="margin-top: 15px; font-size: 11px;"><a href="https://t.me/EabIdbot" target="_blank" style="color:#ffaa77;">🔑 Get License</a></div>
+                </div>
+            </div>
+        
+            <div id="mainApp" class="container hidden">
+                <div class="timer-bar">
+                    <div class="timer-header">
+                        <span class="timer-label">⏰ SUBSCRIPTION REMAINING</span>
+                        <span class="timer-value" id="timerDisplay">---</span>
+                    </div>
+                    <div class="timer-progress"><div class="timer-progress-bar" id="timerProgress"></div></div>
+                </div>
+        
+                <div class="card">
+                    <div class="logo-ring"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zm0 9l2.5-1.25L12 8.5l-2.5 1.25L12 11zm0 2.5l-5-2.5-5 2.5L12 22l10-8.5-5-2.5-5 2.5z"/></svg></div>
+                    <h1>EABVFX <span class="highlight">BOOSTER</span></h1>
+                    <div class="subtitle">TikTok Quality Bypass • Audio Preserved</div>
+                </div>
+        
+                <div class="file-picker-area" id="filePicker">
+                    <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+                    <div style="font-weight: 600;">Select Video</div>
+                    <div style="font-size: 11px; opacity:0.7;">MP4 or MOV</div>
+                </div>
+        
+                <div id="fileInfo" class="file-info" style="display: none;">
+                    <div><span>📹 Filename:</span><span id="fileName">---</span></div>
+                    <div><span>📏 Size:</span><span id="fileSize">---</span></div>
+                    <div><span>🎬 Resolution:</span><span id="fileResolution">---</span></div>
+                </div>
+        
+                <button id="bypassBtn" class="cyber-btn" disabled>PROCESS VIDEO (PRESERVE AUDIO)</button>
+                <button id="logoutBtn" class="cyber-btn" style="background: #aa2222; box-shadow: 0 5px 0 #551100;">LOGOUT</button>
+        
+                <div class="social-actions">
+                    <a href="https://www.tiktok.com/@eabvfx" class="social-btn btn-tiktok">📱 TikTok</a>
+                    <a href="https://t.me/KurdishAE" class="social-btn btn-telegram">💬 Telegram</a>
+                </div>
+                <div class="footer">Made by EABVFX | AUDIO PRESERVED</div>
+            </div>
+        
+            <input type="file" id="videoInput" accept="video/mp4,video/quicktime" style="display: none;">
+        
+            <script>
+                const WORKER_BASE = 'https://white-brook-5e1f.emadbarzani0011.workers.dev';
+                const VERIFY_URL = WORKER_BASE + '/verify';
+                const CHECK_URL = WORKER_BASE + '/check-subscription';
+        
+                let inactivityTimer = null;
+                let subscriptionInterval = null;
+                let currentExpiry = null;
+        
+                function resetInactivityTimer() {
+                    if (inactivityTimer) clearTimeout(inactivityTimer);
+                    inactivityTimer = setTimeout(() => { logout(); }, 5 * 60 * 1000);
+                }
+        
+                function logout() {
+                    localStorage.removeItem('eabvfx_authenticated');
+                    localStorage.removeItem('eabvfx_expiry');
+                    localStorage.removeItem('eabvfx_user_id');
+                    if (subscriptionInterval) clearInterval(subscriptionInterval);
+                    document.getElementById('loginScreen').style.display = 'flex';
+                    document.getElementById('mainApp').classList.add('hidden');
+                    document.getElementById('licenseKey').value = '';
+                    document.getElementById('loginError').innerHTML = '⏰ Session expired. Login again.';
+                }
+        
+                function formatTimeRemaining(ms) {
+                    if (ms <= 0) return 'EXPIRED';
+                    const days = Math.floor(ms / (1000*60*60*24));
+                    const hours = Math.floor((ms % (86400000)) / 3600000);
+                    const minutes = Math.floor((ms % 3600000) / 60000);
+                    if (days > 0) return days + "d " + hours + "h " + minutes + "m";
+                    if (hours > 0) return hours + "h " + minutes + "m";
+                    return minutes + "m";
+                }
+        
+                function updateTimerDisplay() {
+                    if (!currentExpiry) return;
+                    const remaining = currentExpiry - Date.now();
+                    const timerDisplay = document.getElementById('timerDisplay');
+                    const timerProgress = document.getElementById('timerProgress');
+                    if (remaining <= 0) {
+                        timerDisplay.innerHTML = 'EXPIRED';
+                        timerProgress.style.width = '0%';
+                        logout();
+                        return;
                     }
-                    .padding(.horizontal).padding(.top, 20)
-                    
-                    // Activation Card
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text("ACTIVATION").font(.caption).font(.system(size: 12, weight: .bold)).foregroundColor(Color(red: 1, green: 0.3, blue: 0))
-                        
-                        TextField("Enter your activation key", text: $keyInput)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .foregroundColor(.white)
-                            .colorScheme(.dark)
-                            .overlay(RoundedRectangle(cornerRadius: 6).stroke(wrongKeyGlow ? Color.red : Color.clear, lineWidth: 2))
-                            .modifier(ShakeEffect(animatableData: shakeAmount))
-                        
-                        Button(action: activate) {
-                            Text("ACTIVATE")
-                                .frame(maxWidth: .infinity).padding()
-                                .background(wrongKeyGlow ? Color.red.opacity(0.3) : Color(red: 0, green: 1, blue: 1))
-                                .foregroundColor(.black).font(.system(size: 16, weight: .bold)).cornerRadius(12)
-                                .shadow(color: wrongKeyGlow ? Color.red : Color(red: 0, green: 1, blue: 1), radius: wrongKeyGlow ? 10 : 5)
-                        }
-                        
-                        Text(statusText).font(.headline).foregroundColor(statusColor).frame(maxWidth: .infinity, alignment: .center)
-                        Text(expiryText).font(.caption).foregroundColor(Color(red: 0, green: 1, blue: 1)).frame(maxWidth: .infinity, alignment: .center)
-                    }
-                    .padding().background(Color(white: 0.12)).cornerRadius(20)
-                    .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color(red: 0, green: 1, blue: 1).opacity(0.3), lineWidth: 1))
-                    
-                    // Video Card
-                    if isActivated {
-                        VStack(alignment: .leading, spacing: 16) {
-                            Text("VIDEO").font(.caption).font(.system(size: 12, weight: .bold)).foregroundColor(Color(red: 0, green: 1, blue: 1))
+                    timerDisplay.innerHTML = formatTimeRemaining(remaining);
+                    const totalDuration = 30 * 24 * 60 * 60 * 1000;
+                    let percent = Math.max(0, (remaining / totalDuration) * 100);
+                    timerProgress.style.width = percent + '%';
+                }
+        
+                function startSubscriptionTimer(expiryDate) {
+                    if (subscriptionInterval) clearInterval(subscriptionInterval);
+                    currentExpiry = expiryDate;
+                    updateTimerDisplay();
+                    subscriptionInterval = setInterval(updateTimerDisplay, 1000);
+                }
+        
+                async function verifyLicense(licenseKey) {
+                    try {
+                        const response = await fetch(VERIFY_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ code: licenseKey })
+                        });
+                        const data = await response.json();
+                        if (data.success) {
+                            const userId = data.user_id;
+                            const checkResp = await fetch(CHECK_URL + "?user=" + userId);
+                            const checkData = await checkResp.json();
+                            if (checkData.active && checkData.expires) {
+                                const expiry = new Date(checkData.expires).getTime();
+                                localStorage.setItem('eabvfx_authenticated', 'true');
+                                localStorage.setItem('eabvfx_expiry', expiry);
+                                localStorage.setItem('eabvfx_user_id', userId);
+                                return { success: true, expiry: expiry };
+                            } else return { success: false, error: 'Subscription expired.' };
+                        } else return { success: false, error: data.error || 'Invalid code.' };
+                    } catch(e) { return { success: false, error: 'Network error.' }; }
+                }
+        
+                async function checkExistingSession() {
+                    const authenticated = localStorage.getItem('eabvfx_authenticated');
+                    const expiry = parseInt(localStorage.getItem('eabvfx_expiry'));
+                    if (authenticated === 'true' && expiry && expiry > Date.now()) return { valid: true, expiry: expiry };
+                    return { valid: false };
+                }
+        
+                // ============ FIXED NAL REMOVAL - PRESERVES AUDIO ============
+                // This version ONLY removes SEI (type 6) and AUD (type 9) NAL units
+                // It preserves ALL other data including audio tracks
+        
+                const REMOVE_NAL_TYPES = new Set([6, 9]);
+        
+                async function bypassWithNALRemoval(file) {
+                    return new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            let originalData = new Uint8Array(e.target.result);
                             
-                            Button(action: { HapticManager.shared.impact(); showingImagePicker = true }) {
-                                HStack { Image(systemName: "video.badge.plus"); Text(selectedVideoURL?.lastPathComponent ?? "SELECT VIDEO FROM PHOTOS") }
-                                .frame(maxWidth: .infinity).padding().background(Color(white: 0.2)).foregroundColor(Color(red: 0, green: 1, blue: 1)).cornerRadius(12)
-                            }
+                            // Find and remove only SEI/AUD NAL units
+                            let output = [];
+                            let i = 0;
+                            let removedCount = 0;
+                            let modified = false;
                             
-                            Button(action: { HapticManager.shared.impact(style: .heavy); processVideo() }) {
-                                HStack { if isProcessing { ProgressView() }; Text(isProcessing ? "PROCESSING..." : "PROCESS VIDEO") }
-                                .frame(maxWidth: .infinity).padding()
-                                .background(isProcessing ? Color.gray : Color(red: 1, green: 0.3, blue: 0))
-                                .foregroundColor(.white).font(.system(size: 14, weight: .bold)).cornerRadius(12)
-                                .shadow(color: Color(red: 1, green: 0.3, blue: 0), radius: 5)
-                            }
-                            .disabled(isProcessing || selectedVideoURL == nil)
-                        }
-                        .padding().background(Color(white: 0.12)).cornerRadius(20)
-                        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color(red: 1, green: 0.3, blue: 0).opacity(0.3), lineWidth: 1))
-                        .transition(.opacity)
-                    }
-                    
-                    // Result Card
-                    if showResult {
-                        VStack(spacing: 12) {
-                            Image(systemName: resultSuccess ? "checkmark.circle.fill" : "xmark.circle.fill").font(.system(size: 50))
-                                .foregroundColor(resultSuccess ? .green : .red)
-                            Text(resultSuccess ? "SUCCESS" : "FAILED").font(.title2).font(.system(size: 18, weight: .bold))
-                                .foregroundColor(resultSuccess ? Color(red: 0, green: 1, blue: 1) : .red)
-                            Text(resultMessage).font(.caption).foregroundColor(.gray)
-                            
-                            if resultSuccess {
-                                // Share Sheet Button (Works with TikTok app)
-                                Button(action: { 
-                                    HapticManager.shared.impact()
-                                    guard let videoURL = processedVideoURL else { return }
-                                    let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("share_\(Date().timeIntervalSince1970).mp4")
-                                    try? FileManager.default.copyItem(at: videoURL, to: tempURL)
-                                    let activityVC = UIActivityViewController(activityItems: [tempURL], applicationActivities: nil)
-                                    if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                                       let rootVC = windowScene.windows.first?.rootViewController {
-                                        rootVC.present(activityVC, animated: true)
+                            while (i < originalData.length) {
+                                // Look for NAL start code (00 00 00 01 or 00 00 01)
+                                let startCodeLen = 0;
+                                let isStartCode = false;
+                                
+                                if (i + 3 < originalData.length && 
+                                    originalData[i] === 0x00 && originalData[i+1] === 0x00 && 
+                                    originalData[i+2] === 0x00 && originalData[i+3] === 0x01) {
+                                    isStartCode = true;
+                                    startCodeLen = 4;
+                                }
+                                else if (i + 2 < originalData.length && 
+                                         originalData[i] === 0x00 && originalData[i+1] === 0x00 && 
+                                         originalData[i+2] === 0x01) {
+                                    isStartCode = true;
+                                    startCodeLen = 3;
+                                }
+                                
+                                if (isStartCode && i + startCodeLen < originalData.length) {
+                                    let nalType = originalData[i + startCodeLen] & 0x1F;
+                                    
+                                    // If this is SEI or AUD, skip it (don't copy to output)
+                                    if (REMOVE_NAL_TYPES.has(nalType)) {
+                                        // Find the end of this NAL unit
+                                        let nalEnd = i + startCodeLen;
+                                        while (nalEnd < originalData.length) {
+                                            // Check for next start code
+                                            let foundNext = false;
+                                            if (nalEnd + 3 < originalData.length &&
+                                                originalData[nalEnd] === 0x00 && originalData[nalEnd+1] === 0x00 &&
+                                                originalData[nalEnd+2] === 0x00 && originalData[nalEnd+3] === 0x01) {
+                                                foundNext = true;
+                                            }
+                                            else if (nalEnd + 2 < originalData.length &&
+                                                     originalData[nalEnd] === 0x00 && originalData[nalEnd+1] === 0x00 &&
+                                                     originalData[nalEnd+2] === 0x01) {
+                                                foundNext = true;
+                                            }
+                                            if (foundNext) break;
+                                            nalEnd++;
+                                        }
+                                        // Skip this NAL unit
+                                        i = nalEnd;
+                                        removedCount++;
+                                        modified = true;
+                                        continue;
                                     }
-                                }) {
-                                    Text("📤 SHARE TO TIKTOK").frame(maxWidth: .infinity).padding()
-                                        .background(Color(red: 0, green: 1, blue: 1)).foregroundColor(.black)
-                                        .font(.system(size: 14, weight: .bold)).cornerRadius(12)
-                                }
-                                .padding(.top, 8)
-                                
-                                // Alternative: Open Safari Upload
-                                Button(action: { 
-                                    HapticManager.shared.impact()
-                                    UIApplication.shared.open(URL(string: "https://www.tiktok.com/upload")!)
-                                }) {
-                                    Text("🌐 OPEN TIKTOK IN SAFARI").frame(maxWidth: .infinity).padding()
-                                        .background(Color(white: 0.2)).foregroundColor(Color(red: 0, green: 1, blue: 1))
-                                        .font(.system(size: 12, weight: .medium)).cornerRadius(12)
                                 }
                                 
-                                Text("💡 Video saved to Photos. Tap SHARE → TikTok → Post for best quality")
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
-                                    .multilineTextAlignment(.center)
-                                    .padding(.horizontal)
+                                // Copy byte to output
+                                output.push(originalData[i]);
+                                i++;
                             }
-                        }
-                        .padding().frame(maxWidth: .infinity).background(Color(white: 0.12)).cornerRadius(20)
-                    }
-                    
-                    // Social Buttons
-                    HStack(spacing: 12) {
-                        Button(action: { HapticManager.shared.impact(); UIApplication.shared.open(URL(string: "https://www.tiktok.com/@eabvfx")!) }) {
-                            Text("TikTok").frame(maxWidth: .infinity).padding(.vertical, 12)
-                                .background(Color(red: 0, green: 1, blue: 1).opacity(0.2)).foregroundColor(Color(red: 0, green: 1, blue: 1)).cornerRadius(10)
-                        }
-                        Button(action: { HapticManager.shared.impact(); UIApplication.shared.open(URL(string: "https://t.me/KurdishAE")!) }) {
-                            Text("Telegram").frame(maxWidth: .infinity).padding(.vertical, 12)
-                                .background(Color.blue.opacity(0.2)).foregroundColor(.blue).cornerRadius(10)
-                        }
-                        Button(action: { HapticManager.shared.impact(); UIApplication.shared.open(URL(string: "https://t.me/EabIdbot")!) }) {
-                            Text("GET KEY").frame(maxWidth: .infinity).padding(.vertical, 12)
-                                .background(Color(red: 1, green: 0.3, blue: 0).opacity(0.2)).foregroundColor(Color(red: 1, green: 0.3, blue: 0)).cornerRadius(10)
-                        }
-                    }
-                    .padding(.horizontal)
-                    
-                    Text("© 2026 EABVFX").font(.caption2).foregroundColor(.gray).padding(.bottom, 20)
+                            
+                            if (!modified) {
+                                // No NAL units removed, return original file
+                                let patchedBlob = new Blob([originalData], { type: file.type });
+                                let outName = file.name.replace(/\.[^/.]+$/, '') + '_EABVFX.mp4';
+                                resolve({ success: true, blob: patchedBlob, filename: outName, removed: 0 });
+                                return;
+                            }
+                            
+                            // Create new blob with audio preserved
+                            let patchedBlob = new Blob([new Uint8Array(output)], { type: file.type });
+                            let outName = file.name.replace(/\.[^/.]+$/, '') + '_EABVFX_NAL.mp4';
+                            resolve({ success: true, blob: patchedBlob, filename: outName, removed: removedCount });
+                        };
+                        reader.onerror = function() { reject('File read error'); };
+                        reader.readAsArrayBuffer(file);
+                    });
                 }
-                .padding(.horizontal)
-            }
-        }
-        .onAppear {
-            checkActivation()
-            startRemoteLogoutCheck()
-        }
-        .sheet(isPresented: $showingImagePicker) {
-            PHPickerView { url in selectedVideoURL = url }
-        }
-    }
-    
-    private func checkActivation() {
-        let defaults = UserDefaults.standard
-        isActivated = defaults.bool(forKey: "activated")
-        if let expiry = defaults.object(forKey: "expiry") as? Date, expiry > Date() {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "MMM dd, yyyy HH:mm:ss"
-            expiryText = "Expires: \(formatter.string(from: expiry))"
-            statusText = "ACTIVE"; statusColor = .green; userId = defaults.string(forKey: "userId")
-        } else {
-            isActivated = false; statusText = "Not activated"; statusColor = .gray
-        }
-    }
-    
-    private func activate() {
-        guard !keyInput.isEmpty else { triggerWrongKey(); return }
         
-        let url = URL(string: "https://white-brook-5e1f.emadbarzani0011.workers.dev/verify")!
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"; request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try? JSONEncoder().encode(["code": keyInput])
+                // UI Elements
+                const filePicker = document.getElementById('filePicker');
+                const videoInput = document.getElementById('videoInput');
+                const bypassBtn = document.getElementById('bypassBtn');
+                let selectedFile = null;
         
-        URLSession.shared.dataTask(with: request) { data, _, _ in
-            DispatchQueue.main.async {
-                guard let data = data else { triggerWrongKey(); statusText = "Network error"; statusColor = .red; return }
-                do {
-                    let response = try JSONDecoder().decode(VerifyResponse.self, from: data)
-                    if response.success {
-                        let expiry = Calendar.current.date(byAdding: .day, value: 30, to: Date())!
-                        UserDefaults.standard.set(true, forKey: "activated")
-                        UserDefaults.standard.set(expiry, forKey: "expiry")
-                        UserDefaults.standard.set(response.user_id ?? "", forKey: "userId")
-                        isActivated = true; userId = response.user_id
-                        let formatter = DateFormatter()
-                        formatter.dateFormat = "MMM dd, yyyy HH:mm:ss"
-                        expiryText = "Expires: \(formatter.string(from: expiry))"
-                        statusText = "ACTIVE"; statusColor = .green
-                        HapticManager.shared.notification(type: .success)
-                        SoundManager.shared.playSuccessSound()
-                    } else {
-                        triggerWrongKey()
-                        statusText = response.error ?? "Invalid key"; statusColor = .red
-                    }
-                } catch {
-                    triggerWrongKey()
-                    statusText = "Server error"; statusColor = .red
-                }
-            }
-        }.resume()
-    }
-    
-    private func triggerWrongKey() {
-        HapticManager.shared.notification(type: .error)
-        SoundManager.shared.playErrorSound()
-        wrongKeyGlow = true
-        withAnimation(.easeInOut(duration: 0.3).repeatCount(3, autoreverses: true)) { shakeAmount = 10 }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { wrongKeyGlow = false; shakeAmount = 0 }
-    }
-    
-    private func logout() {
-        UserDefaults.standard.removeObject(forKey: "activated")
-        UserDefaults.standard.removeObject(forKey: "expiry")
-        UserDefaults.standard.removeObject(forKey: "userId")
-        isActivated = false; userId = nil; statusText = "Not activated"; statusColor = .gray; expiryText = ""; keyInput = ""
-        selectedVideoURL = nil; processedVideoURL = nil; showResult = false
-        HapticManager.shared.impact()
-    }
-    
-    private func startRemoteLogoutCheck() {
-        timer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { _ in
-            guard let uid = userId, isActivated else { return }
-            let url = URL(string: "https://white-brook-5e1f.emadbarzani0011.workers.dev/check-status?user_id=\(uid)")!
-            URLSession.shared.dataTask(with: url) { data, _, _ in
-                guard let data = data else { return }
-                if let status = try? JSONDecoder().decode(StatusResponse.self, from: data), !status.active {
-                    DispatchQueue.main.async { self.logout() }
-                }
-            }.resume()
-        }
-    }
-    
-    private func processVideo() {
-        guard let inputURL = selectedVideoURL else { return }
-        isProcessing = true; showResult = false
-        
-        Task {
-            do {
-                let tempOutput = FileManager.default.temporaryDirectory.appendingPathComponent("output_\(Date().timeIntervalSince1970).mp4")
-                let success = try await VideoBypass().bypassVideo(inputURL: inputURL, outputURL: tempOutput)
-                
-                if success {
-                    processedVideoURL = tempOutput
+                filePicker.addEventListener('click', () => videoInput.click());
+                videoInput.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    selectedFile = file;
+                    document.getElementById('fileName').textContent = file.name.length > 35 ? file.name.slice(0,32)+'...' : file.name;
+                    document.getElementById('fileSize').textContent = (file.size / (1024*1024)).toFixed(2) + ' MB';
                     
-                    // Save to Photos
-                    PHPhotoLibrary.shared().performChanges({
-                        PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: tempOutput)
-                    }) { saved, error in
-                        DispatchQueue.main.async {
-                            self.isProcessing = false
-                            self.resultSuccess = saved
-                            self.resultMessage = saved ? "Video processed! Ready to share." : (error?.localizedDescription ?? "Save failed")
-                            self.showResult = true
-                            if saved {
-                                HapticManager.shared.notification(type: .success)
-                                SoundManager.shared.playSuccessSound()
+                    // Get video resolution
+                    const video = document.createElement('video');
+                    video.preload = 'metadata';
+                    video.onloadedmetadata = function() {
+                        URL.revokeObjectURL(video.src);
+                        document.getElementById('fileResolution').textContent = video.videoWidth + 'x' + video.videoHeight;
+                        document.getElementById('fileInfo').style.display = 'block';
+                        bypassBtn.disabled = false;
+                    };
+                    video.src = URL.createObjectURL(file);
+                    
+                    resetInactivityTimer();
+                });
+        
+                bypassBtn.addEventListener('click', async () => {
+                    if (!selectedFile) return;
+                    resetInactivityTimer();
+                    bypassBtn.disabled = true;
+                    const originalText = bypassBtn.innerHTML;
+                    bypassBtn.innerHTML = '<span class="spinner"></span> PROCESSING (KEEPING AUDIO)...';
+                    try {
+                        const result = await bypassWithNALRemoval(selectedFile);
+                        if (result.success) {
+                            const successDiv = document.createElement('div');
+                            successDiv.className = 'success-animation';
+                            let message = '<svg viewBox="0 0 24 24" style="width:50px; fill:#2ecc71;"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><div style="font-weight:800;">SUCCESS!</div>';
+                            if (result.removed > 0) {
+                                message += '<div style="font-size:11px">Removed ' + result.removed + ' NAL units<br>Audio preserved!</div>';
                             } else {
-                                HapticManager.shared.notification(type: .error)
+                                message += '<div style="font-size:11px">Video ready<br>Audio intact</div>';
                             }
+                            successDiv.innerHTML = message;
+                            document.body.appendChild(successDiv);
+                            
+                            const url = URL.createObjectURL(result.blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = result.filename;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                            setTimeout(() => { successDiv.remove(); }, 2500);
                         }
+                    } catch (err) {
+                        alert('Error: ' + err.message);
+                    } finally {
+                        bypassBtn.innerHTML = originalText;
+                        bypassBtn.disabled = false;
                     }
-                } else {
-                    throw NSError(domain: "Bypass", code: 1, userInfo: [NSLocalizedDescriptionKey: "elst atom not found"])
+                });
+        
+                const verifyBtnUI = document.getElementById('verifyBtn');
+                const loginScreen = document.getElementById('loginScreen');
+                const mainApp = document.getElementById('mainApp');
+                const logoutBtn = document.getElementById('logoutBtn');
+        
+                verifyBtnUI.addEventListener('click', async () => {
+                    const license = document.getElementById('licenseKey').value.trim();
+                    const errorDiv = document.getElementById('loginError');
+                    if (!license) { errorDiv.innerHTML = '❌ Enter license key'; return; }
+                    errorDiv.innerHTML = 'Verifying...';
+                    const result = await verifyLicense(license);
+                    if (result.success) {
+                        errorDiv.innerHTML = '';
+                        loginScreen.style.display = 'none';
+                        mainApp.classList.remove('hidden');
+                        startSubscriptionTimer(result.expiry);
+                        resetInactivityTimer();
+                    } else {
+                        errorDiv.innerHTML = '❌ ' + (result.error || 'Invalid license');
+                    }
+                });
+        
+                logoutBtn.addEventListener('click', () => logout());
+        
+                (async () => {
+                    const session = await checkExistingSession();
+                    if (session.valid) {
+                        loginScreen.style.display = 'none';
+                        mainApp.classList.remove('hidden');
+                        startSubscriptionTimer(session.expiry);
+                        resetInactivityTimer();
+                    }
+                })();
+        
+                // Particles animation
+                const canvas = document.getElementById('particle-canvas');
+                const ctx = canvas.getContext('2d');
+                let width = window.innerWidth, height = window.innerHeight;
+                let particles = [];
+                function resizeCanvas() { canvas.width = width; canvas.height = height; }
+                window.addEventListener('resize', () => { width = window.innerWidth; height = window.innerHeight; resizeCanvas(); });
+                resizeCanvas();
+                for (let i=0; i<120; i++) {
+                    particles.push({
+                        x: Math.random() * width, y: Math.random() * height,
+                        size: 2 + Math.random() * 5,
+                        vx: (Math.random() - 0.5) * 0.7, vy: 0.3 + Math.random() * 1.2,
+                        alpha: 0.4 + Math.random() * 0.5
+                    });
                 }
-            } catch {
-                DispatchQueue.main.async {
-                    self.isProcessing = false
-                    self.resultSuccess = false
-                    self.resultMessage = error.localizedDescription
-                    self.showResult = true
-                    HapticManager.shared.notification(type: .error)
+                function animateParticles() {
+                    ctx.clearRect(0, 0, width, height);
+                    for (let p of particles) {
+                        p.x += p.vx; p.y += p.vy;
+                        if (p.x < -20) p.x = width+20;
+                        if (p.x > width+20) p.x = -20;
+                        if (p.y > height+30) { p.y = -20; p.x = Math.random() * width; }
+                        if (p.y < -20) p.y = height+30;
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+                        ctx.fillStyle = "rgba(255, 70, 50, " + p.alpha + ")";
+                        ctx.shadowBlur = 10; ctx.shadowColor = '#ff3300';
+                        ctx.fill();
+                    }
+                    requestAnimationFrame(animateParticles);
                 }
-            }
-        }
+                animateParticles();
+        
+                let tapCount = 0;
+                document.querySelector('.card')?.addEventListener('click', () => {
+                    tapCount++;
+                    setTimeout(() => { tapCount = 0; }, 500);
+                    if (tapCount === 2) {
+                        document.body.classList.toggle('light-mode');
+                        tapCount = 0;
+                    }
+                    resetInactivityTimer();
+                });
+            </script>
+        </body>
+        </html>
+        """
     }
 }
 
-// MARK: - PHPickerView
-struct PHPickerView: UIViewControllerRepresentable {
-    var onPick: (URL) -> Void
-    
-    func makeUIViewController(context: Context) -> PHPickerViewController {
-        var config = PHPickerConfiguration()
-        config.filter = .videos
-        config.selectionLimit = 1
-        let picker = PHPickerViewController(configuration: config)
-        picker.delegate = context.coordinator
-        return picker
-    }
-    
-    func updateUIViewController(_ uiViewController: PHPickerViewController, context: Context) {}
-    
-    func makeCoordinator() -> Coordinator { Coordinator(onPick: onPick) }
-    
-    class Coordinator: NSObject, PHPickerViewControllerDelegate {
-        let onPick: (URL) -> Void
-        init(onPick: @escaping (URL) -> Void) { self.onPick = onPick }
-        
-        func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
-            picker.dismiss(animated: true)
-            guard let result = results.first else { return }
-            result.itemProvider.loadFileRepresentation(forTypeIdentifier: UTType.movie.identifier) { url, error in
-                guard let url = url else { return }
-                let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("video_\(Date().timeIntervalSince1970).mp4")
-                try? FileManager.default.copyItem(at: url, to: tempURL)
-                DispatchQueue.main.async { self.onPick(tempURL) }
-            }
-        }
+struct ContentView: View {
+    var body: some View {
+        WebView()
+            .edgesIgnoringSafeArea(.all)
+            .preferredColorScheme(.dark)
     }
 }
