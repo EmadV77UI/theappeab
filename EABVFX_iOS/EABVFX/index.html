@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>EABVFX • RED PHANTOM CORE</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: radial-gradient(circle at 30% 20%, #0a0000 0%, #010000 100%);
+            font-family: 'Segoe UI', 'Inter', 'Poppins', monospace;
+            min-height: 100vh;
+            overflow-x: hidden;
+            color: #e0e0e0;
+            transition: background 0.8s ease;
+            cursor: crosshair;
+        }
+
+        /* RED GRID */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(255, 40, 20, 0.15) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 40, 20, 0.15) 1px, transparent 1px);
+            background-size: 45px 45px;
+            pointer-events: none;
+            animation: driftGrid 14s linear infinite;
+            z-index: 0;
+        }
+
+        @keyframes driftGrid {
+            0% { transform: translateY(0px) translateX(0px); }
+            100% { transform: translateY(45px) translateX(45px); }
+        }
+
+        body::after {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(0deg, 
+                rgba(255, 30, 0, 0.1) 0px,
+                rgba(255, 30, 0, 0.1) 2px,
+                transparent 2px,
+                transparent 8px);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* PARTICLE CANVAS (red) */
+        #particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .container {
+            position: relative;
+            z-index: 10;
+            max-width: 550px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+            padding-bottom: 80px;
+        }
+
+        /* Timer Bar (stays from original) */
+        .timer-bar {
+            background: rgba(8, 0, 0, 0.88);
+            backdrop-filter: blur(12px);
+            border-radius: 28px;
+            padding: 12px 18px;
+            margin-bottom: 20px;
+            border: 1px solid #ff5555;
+            box-shadow: 0 0 12px rgba(255, 0, 0, 0.3);
+        }
+
+        .timer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .timer-label {
+            font-size: 11px;
+            color: #ffaa88;
+            letter-spacing: 1px;
+        }
+
+        .timer-value {
+            font-family: monospace;
+            font-size: 18px;
+            font-weight: bold;
+            color: #ff6666;
+            text-shadow: 0 0 5px #ff2200;
+        }
+
+        .timer-progress {
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .timer-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #ff4444, #ffaa66);
+            width: 100%;
+            transition: width 1s linear;
+        }
+
+        /* Cards */
+        .card {
+            background: rgba(8, 0, 0, 0.88);
+            backdrop-filter: blur(20px);
+            border-radius: 32px;
+            border: 1px solid #ff5555;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.7), 0 0 30px rgba(255,0,0,0.5);
+            padding: 24px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .logo-ring svg {
+            width: 48px;
+            fill: #ff5555;
+            margin-bottom: 10px;
+        }
+
+        h1 {
+            font-family: 'Segoe UI', 'Rajdhani', sans-serif;
+            font-size: 26px;
+            letter-spacing: 2px;
+            background: linear-gradient(135deg, #ff5555, #ffaa77);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .highlight {
+            color: #ff8866;
+        }
+
+        .subtitle {
+            color: #ffaa88;
+            font-size: 11px;
+            margin-top: 5px;
+            border-left: 2px solid #ff6666;
+            padding-left: 10px;
+            display: inline-block;
+        }
+
+        /* File picker (red style) */
+        .file-picker-area {
+            background: rgba(30, 5, 5, 0.8);
+            border: 2px dashed #ff6666;
+            border-radius: 28px;
+            padding: 32px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 20px;
+        }
+
+        .file-picker-area:hover {
+            background: #2a0808;
+            border-color: #ffaa88;
+            box-shadow: 0 0 16px #ff4444;
+        }
+
+        .file-picker-area svg {
+            width: 48px;
+            fill: #ff6666;
+            margin-bottom: 12px;
+        }
+
+        .file-info {
+            background: rgba(0,0,0,0.6);
+            border-radius: 20px;
+            padding: 14px;
+            margin: 15px 0;
+            font-size: 13px;
+            border-left: 3px solid #ff4444;
+        }
+
+        .file-info div {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .file-info span:first-child { color: #ffaa88; }
+        .file-info span:last-child { color: #ff7777; font-weight: bold; }
+
+        /* Buttons */
+        .cyber-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(95deg, #cc2200, #ff6644);
+            border: none;
+            border-radius: 60px;
+            font-weight: 800;
+            font-size: 16px;
+            letter-spacing: 1px;
+            color: white;
+            text-shadow: 0 1px 2px black;
+            cursor: pointer;
+            transition: 0.05s linear;
+            box-shadow: 0 5px 0 #661100;
+            transform: translateY(-2px);
+            margin-bottom: 12px;
+        }
+
+        .cyber-btn:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #661100;
+        }
+
+        .cyber-btn:disabled {
+            opacity: 0.6;
+            transform: translateY(0);
+            cursor: not-allowed;
+        }
+
+        .social-actions {
+            display: flex;
+            gap: 12px;
+            margin: 20px 0 10px;
+        }
+
+        .social-btn {
+            flex: 1;
+            padding: 10px;
+            border-radius: 40px;
+            text-align: center;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 13px;
+            transition: 0.2s;
+        }
+
+        .btn-tiktok {
+            background: #1f0606;
+            border: 1px solid #ff5555;
+            color: #ffaa77;
+        }
+        .btn-telegram {
+            background: #1f0606;
+            border: 1px solid #ff5555;
+            color: #ffaa77;
+        }
+        .social-btn:hover {
+            background: #3a0a0a;
+            color: #ffccaa;
+            box-shadow: 0 0 10px red;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 10px;
+            color: #aa6655;
+        }
+
+        /* Login Screen (red styled) */
+        .login-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0a0000e6;
+            backdrop-filter: blur(12px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-card {
+            background: #0f0202;
+            border: 2px solid #ff4444;
+            border-radius: 48px;
+            padding: 2.5rem;
+            width: 85%;
+            max-width: 380px;
+            text-align: center;
+            box-shadow: 0 0 70px rgba(255, 0, 0, 0.5);
+            animation: flickerRed 2s infinite;
+        }
+
+        @keyframes flickerRed {
+            0% { border-color: #ff4444; box-shadow: 0 0 20px red; }
+            50% { border-color: #ff8888; box-shadow: 0 0 50px #ff5500; }
+            100% { border-color: #ff4444; box-shadow: 0 0 20px red; }
+        }
+
+        .login-card h2 {
+            color: #ff6666;
+            margin: 15px 0;
+            font-size: 1.8rem;
+            text-shadow: 0 0 8px red;
+        }
+
+        .login-card input {
+            width: 100%;
+            padding: 14px;
+            margin: 20px 0;
+            background: #1a0303;
+            border: 1px solid #ff4444;
+            color: #ffaaaa;
+            font-size: 1rem;
+            text-align: center;
+            letter-spacing: 1px;
+            border-radius: 60px;
+        }
+
+        .error-msg {
+            color: #ff8888;
+            font-size: 12px;
+            margin-top: 10px;
+            min-height: 30px;
+        }
+
+        .success-animation {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #0a0000ee;
+            backdrop-filter: blur(16px);
+            border-radius: 32px;
+            padding: 30px;
+            text-align: center;
+            z-index: 1100;
+            animation: fadeInOut 2s ease;
+            border: 1px solid #2ecc71;
+        }
+
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+            20% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.6s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .hidden { display: none !important; }
+
+        .light-mode { background: #f0e6e0; }
+        .light-mode .card, .light-mode .timer-bar, .light-mode .file-picker-area {
+            background: rgba(255,245,240,0.95);
+            color: #2a1a1a;
+        }
+        .light-mode .file-info { background: #f0e0d8; }
+        .light-mode .cyber-btn { background: linear-gradient(95deg, #aa3300, #cc5533); }
+    </style>
+</head>
+<body>
+    <canvas id="particle-canvas"></canvas>
+
+    <!-- LICENSE LOGIN SCREEN (replaces old password overlay) -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-card">
+            <div class="logo-ring"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zm0 9l2.5-1.25L12 8.5l-2.5 1.25L12 11zm0 2.5l-5-2.5-5 2.5L12 22l10-8.5-5-2.5-5 2.5z"/></svg></div>
+            <h2>EABVFX <span style="color:#ff7777;">BOOSTER</span></h2>
+            <input type="text" id="licenseKey" placeholder="License Key" autocomplete="off">
+            <button id="verifyBtn" class="cyber-btn" style="background: #aa2222; box-shadow: 0 5px 0 #551100;">VERIFY</button>
+            <div id="loginError" class="error-msg"></div>
+            <div style="margin-top: 15px; font-size: 11px;"><a href="https://t.me/EabIdbot" target="_blank" style="color:#ffaa77;">🔑 Get License</a></div>
+        </div>
+    </div>
+
+    <!-- MAIN APP (hidden until verified) -->
+    <div id="mainApp" class="container hidden">
+        <!-- Timer Bar -->
+        <div class="timer-bar">
+            <div class="timer-header">
+                <span class="timer-label">⏰ SUBSCRIPTION REMAINING</span>
+                <span class="timer-value" id="timerDisplay">---</span>
+            </div>
+            <div class="timer-progress"><div class="timer-progress-bar" id="timerProgress"></div></div>
+        </div>
+
+        <!-- Header -->
+        <div class="card">
+            <div class="logo-ring"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zm0 9l2.5-1.25L12 8.5l-2.5 1.25L12 11zm0 2.5l-5-2.5-5 2.5L12 22l10-8.5-5-2.5-5 2.5z"/></svg></div>
+            <h1>EABVFX <span class="highlight">BOOSTER</span></h1>
+            <div class="subtitle">TikTok Quality Bypass • NAL Removal Engine</div>
+        </div>
+
+        <!-- File Picker -->
+        <div class="file-picker-area" id="filePicker">
+            <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+            <div style="font-weight: 600;">Select Video</div>
+            <div style="font-size: 11px; opacity:0.7;">MP4 or MOV</div>
+        </div>
+
+        <!-- File Info -->
+        <div id="fileInfo" class="file-info" style="display: none;">
+            <div><span>📹 Filename:</span><span id="fileName">---</span></div>
+            <div><span>📏 Size:</span><span id="fileSize">---</span></div>
+            <div><span>🎬 Resolution:</span><span id="fileResolution">---</span></div>
+        </div>
+
+        <!-- Process Button (New Bypass) -->
+        <button id="bypassBtn" class="cyber-btn" disabled>PROCESS VIDEO (NAL REMOVAL)</button>
+        <!-- Logout Button -->
+        <button id="logoutBtn" class="cyber-btn" style="background: #aa2222; box-shadow: 0 5px 0 #551100;">LOGOUT</button>
+
+        <!-- Social Links -->
+        <div class="social-actions">
+            <a href="https://www.tiktok.com/@eabvfx" class="social-btn btn-tiktok">📱 TikTok</a>
+            <a href="https://t.me/KurdishAE" class="social-btn btn-telegram">💬 Telegram</a>
+        </div>
+        <div class="footer">Made by EABVFX | NAL FILTER ACTIVE</div>
+    </div>
+
+    <input type="file" id="videoInput" accept="video/mp4,video/quicktime" style="display: none;">
+
+    <script>
+        // ============ CONFIGURATION (same Worker API) ============
+        const WORKER_BASE = 'https://white-brook-5e1f.emadbarzani0011.workers.dev';
+        const VERIFY_URL = WORKER_BASE + '/verify';
+        const CHECK_URL  = WORKER_BASE + '/check-subscription';
+
+        // ============ SESSION & TIMER MANAGEMENT (original logic) ============
+        let inactivityTimer = null;
+        let subscriptionInterval = null;
+        let currentExpiry = null;
+
+        function resetInactivityTimer() {
+            if (inactivityTimer) clearTimeout(inactivityTimer);
+            inactivityTimer = setTimeout(() => { logout(); }, 5 * 60 * 1000);
+        }
+
+        function logout() {
+            localStorage.removeItem('eabvfx_authenticated');
+            localStorage.removeItem('eabvfx_expiry');
+            localStorage.removeItem('eabvfx_user_id');
+            if (subscriptionInterval) clearInterval(subscriptionInterval);
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('mainApp').classList.add('hidden');
+            document.getElementById('licenseKey').value = '';
+            document.getElementById('loginError').innerHTML = '⏰ Session expired. Login again.';
+        }
+
+        function formatTimeRemaining(ms) {
+            if (ms <= 0) return 'EXPIRED';
+            const days = Math.floor(ms / (1000*60*60*24));
+            const hours = Math.floor((ms % (86400000)) / 3600000);
+            const minutes = Math.floor((ms % 3600000) / 60000);
+            if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+            if (hours > 0) return `${hours}h ${minutes}m`;
+            return `${minutes}m`;
+        }
+
+        function updateTimerDisplay() {
+            if (!currentExpiry) return;
+            const remaining = currentExpiry - Date.now();
+            const timerDisplay = document.getElementById('timerDisplay');
+            const timerProgress = document.getElementById('timerProgress');
+            if (remaining <= 0) {
+                timerDisplay.innerHTML = 'EXPIRED';
+                timerProgress.style.width = '0%';
+                logout();
+                return;
+            }
+            timerDisplay.innerHTML = formatTimeRemaining(remaining);
+            const totalDuration = 30 * 24 * 60 * 60 * 1000;
+            let percent = Math.max(0, (remaining / totalDuration) * 100);
+            timerProgress.style.width = percent + '%';
+            if (remaining < 3 * 24 * 3600000) timerProgress.style.background = '#ff3300';
+            else timerProgress.style.background = 'linear-gradient(90deg, #ff4444, #ffaa66)';
+        }
+
+        function startSubscriptionTimer(expiryDate) {
+            if (subscriptionInterval) clearInterval(subscriptionInterval);
+            currentExpiry = expiryDate;
+            updateTimerDisplay();
+            subscriptionInterval = setInterval(updateTimerDisplay, 1000);
+        }
+
+        // Server verification
+        async function verifyLicense(licenseKey) {
+            try {
+                const response = await fetch(VERIFY_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: licenseKey })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    const userId = data.user_id;
+                    const checkResp = await fetch(`${CHECK_URL}?user=${userId}`);
+                    const checkData = await checkResp.json();
+                    if (checkData.active && checkData.expires) {
+                        const expiry = new Date(checkData.expires).getTime();
+                        localStorage.setItem('eabvfx_authenticated', 'true');
+                        localStorage.setItem('eabvfx_expiry', expiry);
+                        localStorage.setItem('eabvfx_user_id', userId);
+                        return { success: true, expiry: expiry };
+                    } else return { success: false, error: 'Subscription expired.' };
+                } else return { success: false, error: data.error || 'Invalid code.' };
+            } catch(e) { return { success: false, error: 'Network error.' }; }
+        }
+
+        async function checkSubscriptionStatus() {
+            const userId = localStorage.getItem('eabvfx_user_id');
+            if (!userId) return false;
+            try {
+                const resp = await fetch(`${CHECK_URL}?user=${userId}`);
+                const data = await resp.json();
+                if (!data.active) { logout(); return false; }
+                if (data.expires) {
+                    const newExpiry = new Date(data.expires).getTime();
+                    if (newExpiry !== currentExpiry) {
+                        localStorage.setItem('eabvfx_expiry', newExpiry);
+                        startSubscriptionTimer(newExpiry);
+                    }
+                }
+                return true;
+            } catch(e) { return true; }
+        }
+
+        async function checkExistingSession() {
+            const authenticated = localStorage.getItem('eabvfx_authenticated');
+            const expiry = parseInt(localStorage.getItem('eabvfx_expiry'));
+            if (authenticated === 'true' && expiry && expiry > Date.now()) return { valid: true, expiry: expiry };
+            return { valid: false };
+        }
+
+        // ============ NAL REMOVAL BYPASS (JavaScript port of v.py) ============
+        // Removes SEI (type 6) and AUD (type 9) NAL units from H.264 samples
+        const REMOVE_NAL_TYPES = new Set([6, 9]);
+
+        function readUint32(data, offset) { return new DataView(data, offset, 4).getUint32(0, false); }
+        function writeUint32(data, offset, value) { new DataView(data, offset, 4).setUint32(0, value, false); }
+        function readUint64(data, offset) { return new DataView(data, offset, 8).getBigUint64(0, false); }
+        
+        function parseBoxes(data, start, end) {
+            if (end === undefined) end = data.byteLength;
+            let boxes = [];
+            let p = start;
+            while (p + 8 <= end) {
+                let size = readUint32(data, p);
+                let type = new TextDecoder().decode(data.slice(p+4, p+8));
+                let header = 8;
+                if (size === 1) {
+                    size = Number(readUint64(data, p+8));
+                    header = 16;
+                } else if (size === 0) size = end - p;
+                if (size < header || p + size > end) break;
+                let box = { type, start: p, header, end: p+size, children: [] };
+                let childStart = p + header;
+                if (type === 'meta') childStart += 4;
+                else if (type === 'avc1') childStart = p + header + 78;
+                else if (type === 'mp4a') childStart = p + header + 28;
+                const containerSet = new Set(['moov','trak','mdia','minf','stbl','edts','udta','meta','ilst','dinf','avc1','mp4a']);
+                if (containerSet.has(type) && childStart < p+size) {
+                    box.children = parseBoxes(data, childStart, p+size);
+                }
+                boxes.push(box);
+                p += size;
+            }
+            return boxes;
+        }
+
+        function findPath(boxes, types) {
+            let cur = boxes;
+            for (let t of types) {
+                let next = [];
+                for (let b of cur) {
+                    for (let child of b.children) if (child.type === t) next.push(child);
+                }
+                cur = next;
+            }
+            return cur;
+        }
+
+        async function bypassWithNALRemoval(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    let data = new Uint8Array(e.target.result);
+                    let buffer = data.buffer;
+                    let boxes = parseBoxes(buffer);
+                    let moov = boxes.find(b => b.type === 'moov');
+                    let mdat = boxes.find(b => b.type === 'mdat');
+                    if (!moov || !mdat) return reject('Invalid MP4: moov/mdat not found');
+
+                    // Find video track
+                    let videoTrak = null;
+                    for (let trak of moov.children) {
+                        if (trak.type !== 'trak') continue;
+                        let hdlr = findPath([trak], ['mdia','hdlr']);
+                        if (hdlr.length) {
+                            let off = hdlr[0].start + hdlr[0].header + 8;
+                            let handler = new TextDecoder().decode(buffer.slice(off, off+4));
+                            if (handler === 'vide') { videoTrak = trak; break; }
+                        }
+                    }
+                    if (!videoTrak) return reject('No video track found');
+
+                    let stszBox = findPath([videoTrak], ['mdia','minf','stbl','stsz'])[0];
+                    let stscBox = findPath([videoTrak], ['mdia','minf','stbl','stsc'])[0];
+                    let stcoBoxes = findPath([videoTrak], ['mdia','minf','stbl','stco']);
+                    let co64Boxes = findPath([videoTrak], ['mdia','minf','stbl','co64']);
+                    let chunkBox = stcoBoxes[0] || co64Boxes[0];
+                    if (!chunkBox) return reject('No chunk offset box');
+
+                    // Parse stsz
+                    let stszStart = stszBox.start + stszBox.header;
+                    let sampleSize = readUint32(buffer, stszStart+4);
+                    let sampleCount = readUint32(buffer, stszStart+8);
+                    let sizes = [];
+                    let tablePos = stszStart + 12;
+                    if (sampleSize !== 0) {
+                        for (let i=0; i<sampleCount; i++) sizes.push(sampleSize);
+                    } else {
+                        for (let i=0; i<sampleCount; i++) sizes.push(readUint32(buffer, tablePos + i*4));
+                    }
+
+                    // Parse chunk offsets
+                    let chunkStart = chunkBox.start + chunkBox.header;
+                    let chunkCount = readUint32(buffer, chunkStart+4);
+                    let chunkOffsets = [];
+                    let chunkTable = chunkStart + 8;
+                    if (chunkBox.type === 'stco') {
+                        for (let i=0; i<chunkCount; i++) chunkOffsets.push(readUint32(buffer, chunkTable + i*4));
+                    } else {
+                        for (let i=0; i<chunkCount; i++) chunkOffsets.push(Number(readUint64(buffer, chunkTable + i*8)));
+                    }
+
+                    // Parse stsc
+                    let stscStart = stscBox.start + stscBox.header;
+                    let stscCount = readUint32(buffer, stscStart+4);
+                    let stscEntries = [];
+                    let stscTable = stscStart + 8;
+                    for (let i=0; i<stscCount; i++) {
+                        let first = readUint32(buffer, stscTable + i*12);
+                        let perChunk = readUint32(buffer, stscTable + i*12 + 4);
+                        let desc = readUint32(buffer, stscTable + i*12 + 8);
+                        stscEntries.push([first, perChunk, desc]);
+                    }
+
+                    // Build sample offsets
+                    let sampleOffsets = [];
+                    let idx = 0;
+                    for (let ci=1; ci <= chunkOffsets.length; ci++) {
+                        let active = stscEntries[0];
+                        for (let e of stscEntries) {
+                            if (e[0] <= ci) active = e;
+                            else break;
+                        }
+                        let offset = chunkOffsets[ci-1];
+                        for (let k=0; k<active[1]; k++) {
+                            if (idx >= sizes.length) break;
+                            sampleOffsets.push(offset);
+                            offset += sizes[idx];
+                            idx++;
+                        }
+                    }
+
+                    // Process each video sample: remove SEI/AUD NAL units
+                    let videoMap = new Map();
+                    let events = [];
+                    let totalDelta = 0;
+                    let totalRemoved = 0;
+
+                    for (let i=0; i<Math.min(sampleOffsets.length, sizes.length); i++) {
+                        let off = sampleOffsets[i];
+                        let sz = sizes[i];
+                        let sample = new Uint8Array(buffer, off, sz);
+                        let out = [];
+                        let p = 0;
+                        while (p + 4 <= sample.length) {
+                            let nalSize = readUint32(sample.buffer, sample.byteOffset + p);
+                            if (nalSize === 0) {
+                                out.push(0,0,0,0);
+                                p += 4;
+                                continue;
+                            }
+                            let nalStart = p + 4;
+                            if (nalStart + nalSize > sample.length) break;
+                            let nalType = sample[nalStart] & 0x1F;
+                            if (REMOVE_NAL_TYPES.has(nalType)) {
+                                totalRemoved++;
+                                p += 4 + nalSize;
+                                continue;
+                            }
+                            // keep this NAL
+                            out.push((nalSize >> 24) & 0xFF, (nalSize >> 16) & 0xFF, (nalSize >> 8) & 0xFF, nalSize & 0xFF);
+                            for (let j=0; j<nalSize; j++) out.push(sample[nalStart + j]);
+                            p += 4 + nalSize;
+                        }
+                        if (p < sample.length) {
+                            // leftover bytes, keep as is
+                            for (let j=p; j<sample.length; j++) out.push(sample[j]);
+                        }
+                        let newSample = new Uint8Array(out);
+                        let delta = sz - newSample.length;
+                        if (delta !== 0) {
+                            videoMap.set(off, { oldSize: sz, sample: newSample });
+                            sizes[i] = newSample.length;
+                            events.push({ pos: off + sz, delta: delta });
+                            totalDelta += delta;
+                        }
+                    }
+
+                    if (totalDelta === 0) return reject('No NAL units removed (video already clean?)');
+
+                    // Update stsz table
+                    let stszView = new Uint8Array(buffer);
+                    for (let i=0; i<sizes.length; i++) {
+                        writeUint32(stszView.buffer, tablePos + i*4, sizes[i]);
+                    }
+
+                    // Sort events and apply delta shift to chunk offsets
+                    events.sort((a,b) => a.pos - b.pos);
+                    function shiftBefore(pos) {
+                        let s = 0;
+                        for (let ev of events) {
+                            if (ev.pos <= pos) s += ev.delta;
+                            else break;
+                        }
+                        return s;
+                    }
+
+                    function updateOffsets(box) {
+                        if (box.type === 'stco') {
+                            let start = box.start + box.header;
+                            let cnt = readUint32(buffer, start+4);
+                            let table = start + 8;
+                            for (let i=0; i<cnt; i++) {
+                                let oldOff = readUint32(buffer, table + i*4);
+                                let newOff = oldOff - shiftBefore(oldOff);
+                                writeUint32(stszView.buffer, table + i*4, newOff);
+                            }
+                        } else if (box.type === 'co64') {
+                            let start = box.start + box.header;
+                            let cnt = readUint32(buffer, start+4);
+                            let table = start + 8;
+                            for (let i=0; i<cnt; i++) {
+                                let oldOff = Number(readUint64(buffer, table + i*8));
+                                let newOff = oldOff - shiftBefore(oldOff);
+                                let newOffBig = BigInt(newOff);
+                                let dv = new DataView(stszView.buffer, table + i*8, 8);
+                                dv.setBigUint64(0, newOffBig, false);
+                            }
+                        }
+                    }
+                    let moovBoxes = [moov];
+                    (function recurse(boxes) {
+                        for (let b of boxes) {
+                            updateOffsets(b);
+                            recurse(b.children);
+                        }
+                    })(moovBoxes);
+
+                    // Rebuild output buffer
+                    let payloadStart = mdat.start + mdat.header;
+                    let payloadEnd = mdat.end;
+                    let outChunks = [];
+                    outChunks.push(new Uint8Array(buffer, 0, payloadStart));
+                    let p = payloadStart;
+                    let sortedKeys = Array.from(videoMap.keys()).sort((a,b)=>a-b);
+                    for (let off of sortedKeys) {
+                        let entry = videoMap.get(off);
+                        if (off > p) outChunks.push(new Uint8Array(buffer, p, off - p));
+                        outChunks.push(entry.sample);
+                        p = off + entry.oldSize;
+                    }
+                    if (p < payloadEnd) outChunks.push(new Uint8Array(buffer, p, payloadEnd - p));
+                    // rest after mdat
+                    outChunks.push(new Uint8Array(buffer, payloadEnd));
+
+                    let finalBuffer = new Blob(outChunks).arrayBuffer();
+                    let finalU8 = new Uint8Array(finalBuffer);
+                    // update mdat size
+                    let newMdatSize = (payloadEnd - payloadStart) - totalDelta;
+                    if (mdat.header === 8) {
+                        writeUint32(finalU8.buffer, mdat.start, newMdatSize);
+                    } else {
+                        // 16-byte header (size=1)
+                        let dv = new DataView(finalU8.buffer, mdat.start+8, 8);
+                        dv.setBigUint64(0, BigInt(newMdatSize), false);
+                    }
+
+                    let patchedBlob = new Blob([finalU8], { type: 'video/mp4' });
+                    let outName = file.name.replace(/\.[^/.]+$/, '') + '_EABVFX_NAL.mp4';
+                    resolve({ success: true, blob: patchedBlob, filename: outName, removed: totalRemoved });
+                };
+                reader.onerror = () => reject('File read error');
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        // ============ UI BINDINGS ============
+        const filePicker = document.getElementById('filePicker');
+        const videoInput = document.getElementById('videoInput');
+        const bypassBtn = document.getElementById('bypassBtn');
+        const fileInfoDiv = document.getElementById('fileInfo');
+        let selectedFile = null;
+
+        filePicker.addEventListener('click', () => videoInput.click());
+        videoInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            selectedFile = file;
+            document.getElementById('fileName').textContent = file.name.length > 35 ? file.name.slice(0,32)+'...' : file.name;
+            document.getElementById('fileSize').textContent = (file.size / (1024*1024)).toFixed(2) + ' MB';
+            fileInfoDiv.style.display = 'block';
+            // get resolution
+            const vid = document.createElement('video');
+            vid.preload = 'metadata';
+            vid.onloadedmetadata = () => {
+                URL.revokeObjectURL(vid.src);
+                document.getElementById('fileResolution').textContent = `${vid.videoWidth}x${vid.videoHeight}`;
+                bypassBtn.disabled = false;
+            };
+            vid.src = URL.createObjectURL(file);
+            resetInactivityTimer();
+        });
+
+        bypassBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+            resetInactivityTimer();
+            bypassBtn.disabled = true;
+            const originalText = bypassBtn.innerHTML;
+            bypassBtn.innerHTML = '<span class="spinner"></span> REMOVING NAL UNITS...';
+            try {
+                const result = await bypassWithNALRemoval(selectedFile);
+                if (result.success) {
+                    const successDiv = document.createElement('div');
+                    successDiv.className = 'success-animation';
+                    successDiv.innerHTML = `<svg viewBox="0 0 24 24" style="width:50px; fill:#2ecc71;"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><div style="font-weight:800;">SUCCESS!</div><div style="font-size:11px">Removed ${result.removed} NAL units</div>`;
+                    document.body.appendChild(successDiv);
+                    const url = URL.createObjectURL(result.blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = result.filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    setTimeout(() => { successDiv.remove(); }, 2000);
+                } else throw new Error(result.error);
+            } catch (err) {
+                alert('Bypass failed: ' + err.message);
+            } finally {
+                bypassBtn.innerHTML = originalText;
+                bypassBtn.disabled = false;
+            }
+        });
+
+        // Login / Logout
+        const verifyBtnUI = document.getElementById('verifyBtn');
+        const loginScreen = document.getElementById('loginScreen');
+        const mainApp = document.getElementById('mainApp');
+        const logoutBtn = document.getElementById('logoutBtn');
+
+        verifyBtnUI.addEventListener('click', async () => {
+            const license = document.getElementById('licenseKey').value.trim();
+            const errorDiv = document.getElementById('loginError');
+            if (!license) { errorDiv.innerHTML = '❌ Enter license key'; return; }
+            errorDiv.innerHTML = 'Verifying...';
+            const result = await verifyLicense(license);
+            if (result.success) {
+                errorDiv.innerHTML = '';
+                loginScreen.style.display = 'none';
+                mainApp.classList.remove('hidden');
+                startSubscriptionTimer(result.expiry);
+                resetInactivityTimer();
+                setInterval(checkSubscriptionStatus, 30*60*1000);
+                window.addEventListener('focus', checkSubscriptionStatus);
+            } else {
+                errorDiv.innerHTML = '❌ ' + (result.error || 'Invalid license');
+            }
+        });
+
+        logoutBtn.addEventListener('click', () => logout());
+
+        (async () => {
+            const session = await checkExistingSession();
+            if (session.valid) {
+                loginScreen.style.display = 'none';
+                mainApp.classList.remove('hidden');
+                startSubscriptionTimer(session.expiry);
+                resetInactivityTimer();
+                await checkSubscriptionStatus();
+                setInterval(checkSubscriptionStatus, 30*60*1000);
+            }
+        })();
+
+        // Particles (red theme)
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+        let width = window.innerWidth, height = window.innerHeight;
+        let particles = [];
+        function resizeCanvas() { canvas.width = width; canvas.height = height; }
+        window.addEventListener('resize', () => { width = window.innerWidth; height = window.innerHeight; resizeCanvas(); });
+        resizeCanvas();
+        for (let i=0; i<120; i++) {
+            particles.push({
+                x: Math.random() * width, y: Math.random() * height,
+                size: 2 + Math.random() * 5,
+                vx: (Math.random() - 0.5) * 0.7, vy: 0.3 + Math.random() * 1.2,
+                alpha: 0.4 + Math.random() * 0.5
+            });
+        }
+        function animateParticles() {
+            ctx.clearRect(0, 0, width, height);
+            for (let p of particles) {
+                p.x += p.vx; p.y += p.vy;
+                if (p.x < -20) p.x = width+20;
+                if (p.x > width+20) p.x = -20;
+                if (p.y > height+30) { p.y = -20; p.x = Math.random() * width; }
+                if (p.y < -20) p.y = height+30;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+                ctx.fillStyle = `rgba(255, 70, 50, ${p.alpha})`;
+                ctx.shadowBlur = 10; ctx.shadowColor = '#ff3300';
+                ctx.fill();
+            }
+            requestAnimationFrame(animateParticles);
+        }
+        animateParticles();
+
+        // Theme toggle (double tap header)
+        let tapCount = 0;
+        document.querySelector('.card')?.addEventListener('click', () => {
+            tapCount++;
+            setTimeout(() => { tapCount = 0; }, 500);
+            if (tapCount === 2) {
+                document.body.classList.toggle('light-mode');
+                tapCount = 0;
+            }
+            resetInactivityTimer();
+        });
+    </script>
+</body>
+</html>
