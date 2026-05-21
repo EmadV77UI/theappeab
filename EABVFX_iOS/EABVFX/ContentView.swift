@@ -548,10 +548,7 @@ struct WebView: UIViewRepresentable {
                     return { valid: false };
                 }
         
-                // ============ FIXED NAL REMOVAL - PRESERVES AUDIO ============
-                // This version ONLY removes SEI (type 6) and AUD (type 9) NAL units
-                // It preserves ALL other data including audio tracks
-        
+                // ============ NAL REMOVAL - PRESERVES AUDIO ============
                 const REMOVE_NAL_TYPES = new Set([6, 9]);
         
                 async function bypassWithNALRemoval(file) {
@@ -559,15 +556,12 @@ struct WebView: UIViewRepresentable {
                         const reader = new FileReader();
                         reader.onload = function(e) {
                             let originalData = new Uint8Array(e.target.result);
-                            
-                            // Find and remove only SEI/AUD NAL units
                             let output = [];
                             let i = 0;
                             let removedCount = 0;
                             let modified = false;
                             
                             while (i < originalData.length) {
-                                // Look for NAL start code (00 00 00 01 or 00 00 01)
                                 let startCodeLen = 0;
                                 let isStartCode = false;
                                 
@@ -587,12 +581,9 @@ struct WebView: UIViewRepresentable {
                                 if (isStartCode && i + startCodeLen < originalData.length) {
                                     let nalType = originalData[i + startCodeLen] & 0x1F;
                                     
-                                    // If this is SEI or AUD, skip it (don't copy to output)
                                     if (REMOVE_NAL_TYPES.has(nalType)) {
-                                        // Find the end of this NAL unit
                                         let nalEnd = i + startCodeLen;
                                         while (nalEnd < originalData.length) {
-                                            // Check for next start code
                                             let foundNext = false;
                                             if (nalEnd + 3 < originalData.length &&
                                                 originalData[nalEnd] === 0x00 && originalData[nalEnd+1] === 0x00 &&
@@ -607,7 +598,6 @@ struct WebView: UIViewRepresentable {
                                             if (foundNext) break;
                                             nalEnd++;
                                         }
-                                        // Skip this NAL unit
                                         i = nalEnd;
                                         removedCount++;
                                         modified = true;
@@ -615,22 +605,23 @@ struct WebView: UIViewRepresentable {
                                     }
                                 }
                                 
-                                // Copy byte to output
                                 output.push(originalData[i]);
                                 i++;
                             }
                             
                             if (!modified) {
-                                // No NAL units removed, return original file
                                 let patchedBlob = new Blob([originalData], { type: file.type });
-                                let outName = file.name.replace(/\.[^/.]+$/, '') + '_EABVFX.mp4';
+                                let originalName = file.name;
+                                let baseName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
+                                let outName = baseName + '_EABVFX.mp4';
                                 resolve({ success: true, blob: patchedBlob, filename: outName, removed: 0 });
                                 return;
                             }
                             
-                            // Create new blob with audio preserved
                             let patchedBlob = new Blob([new Uint8Array(output)], { type: file.type });
-                            let outName = file.name.replace(/\.[^/.]+$/, '') + '_EABVFX_NAL.mp4';
+                            let originalName = file.name;
+                            let baseName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
+                            let outName = baseName + '_EABVFX_NAL.mp4';
                             resolve({ success: true, blob: patchedBlob, filename: outName, removed: removedCount });
                         };
                         reader.onerror = function() { reject('File read error'); };
@@ -652,7 +643,6 @@ struct WebView: UIViewRepresentable {
                     document.getElementById('fileName').textContent = file.name.length > 35 ? file.name.slice(0,32)+'...' : file.name;
                     document.getElementById('fileSize').textContent = (file.size / (1024*1024)).toFixed(2) + ' MB';
                     
-                    // Get video resolution
                     const video = document.createElement('video');
                     video.preload = 'metadata';
                     video.onloadedmetadata = function() {
